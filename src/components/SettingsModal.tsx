@@ -103,7 +103,7 @@ export default function SettingsModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[10000] p-4 transition-opacity duration-350">
-      <div className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-3xl p-6 w-full max-w-[650px] shadow-2xl max-h-[92vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out]">
+      <div className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-3xl p-6 w-full max-w-[800px] shadow-2xl max-h-[92vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out]">
         
         {/* Header */}
         <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-700">
@@ -116,34 +116,34 @@ export default function SettingsModal({
         </div>
 
         {/* Tab Selection */}
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl my-4 flex-wrap">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl my-4 overflow-x-auto scrollbar-none">
           <button 
             onClick={() => setActiveTab('categories')}
-            className={`flex-1 py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'categories' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'categories' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
           >
             🗂️ Khoa Điều Trị
           </button>
           <button 
             onClick={() => setActiveTab('backgrounds')}
-            className={`flex-1 py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'backgrounds' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'backgrounds' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
           >
             🖼️ Hình Nền
           </button>
           <button 
             onClick={() => setActiveTab('music')}
-            className={`flex-1 py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'music' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'music' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
           >
             🎵 Nhạc Nền
           </button>
           <button 
             onClick={() => setActiveTab('links')}
-            className={`flex-1 py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'links' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'links' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
           >
             🔗 Liên Kết
           </button>
           <button 
             onClick={() => setActiveTab('account')}
-            className={`flex-1 py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'account' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'account' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
           >
             👤 Tài Khoản
           </button>
