@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Comfortaa:wght@500;700&family=Space+Grotesk:wght@500;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-comfortaa: "Comfortaa", cursive;
+  --font-mono: "Space Grotesk", sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+}
+
+/* Custom CSS variables designed from user Shades of Black and Shades of Gray palettes */
+:root {
+  /* Shades of Gray core background & layout (Light mode) */
+  --bg: #DADADA; /* Gentle Gray */
+  --bg2: #DBE2E9; /* Chrome Gray */
+  --bg3: #C4C3D0; /* Lavender Gray */
+  --card: #E7DADA; /* Pink Gray styles */
+  --border: #91A3B0; /* Cadet Gray */
+  --border2: #657383; /* Slate Gray */
+  --primary: #2A3439; /* Gun Metal Gray */
+  --primary-light: #4F666A; /* Storm Cloud Gray */
+  --accent: #C4AEAD; /* Silver Pink */
+  --success: #253529; /* Black Leather Jacket */
+  --text: #191C27; /* Black Denim */
+  --text-muted: #4D4D5C; /* Porpoise Gray */
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 10px 25px rgba(42, 52, 57, 0.08);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Unified host zone palettes based on Shades of Gray */
+  --zone-primary: #2A3439; /* Gun Metal Gray */
+  --zone-primary-light: #4F666A; /* Storm Cloud Gray */
+  --zone-primary-lighter: #E7DADA; /* Pink Gray block backup */
+  --zone-accent: #7C6E7F; /* Dove Gray */
+  --zone-accent-light: #9090C0; /* Cool Gray */
+  --zone-bg-gradient: linear-gradient(135deg, #DADADA 0%, #E7DADA 50%, #DBE2E9 100%);
+  --zone-card-glow: rgba(42, 52, 57, 0.05);
+  --zone-border: #91A3B0; /* Cadet Gray */
+  --zone-header-bg: linear-gradient(135deg, #191C27 0%, #2A3439 100%); /* Elegant Black Denim to Gun Metal Gray */
+
+  --welcome-bg: linear-gradient(160deg, #A8A8B4 0%, #BBAAAB 30%, #9C8988 65%, #AEBAC6 100%);
+}
+
+:root.dark-mode {
+  /* Shades of Black core backgrounds (Dark mode) */
+  --bg: #151922; /* Cool Black */
+  --bg2: #191C27; /* Black Denim */
+  --bg3: #010127; /* Black Rock */
+  --card: #24252B; /* Black Russian */
+  --border: #4D4D5C; /* Porpoise Gray */
+  --border2: #657383; /* Slate Gray */
+  --primary: #9090C0; /* Cool Gray primary interactive accents */
+  --primary-light: #C4C3D0; /* Lavender Gray transition values */
+  --accent: #C4AEAD; /* Silver Pink highlights */
+  --success: #253529; /* Black Leather Jacket status highlights */
+  --text: #DADADA; /* Gentle Gray read text */
+  --text-muted: #A7A6BA; /* Purple Gray reading secondary text */
+  --shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+
+  /* Unified dark host zone palettes based on Shades of Black as accents */
+  --zone-primary: #9090C0; /* Cool Gray */
+  --zone-primary-light: #A7A6BA; /* Purple Gray */
+  --zone-primary-lighter: #191C27; /* Black Denim dark backdrops */
+  --zone-accent: #C4AEAD; /* Silver Pink decorative highlights */
+  --zone-accent-light: #B29CA2; /* Dusty Gray styling accent */
+  --zone-bg-gradient: linear-gradient(135deg, #010127 0%, #151922 50%, #191C27 100%);
+  --zone-card-glow: rgba(144, 144, 192, 0.12);
+  --zone-border: #4D4D5C; /* Porpoise Gray frames */
+  --zone-header-bg: linear-gradient(135deg, #120321 0%, #191C27 100%); /* Gothic Grape to Black Denim premium headers */
+
+  --welcome-bg: linear-gradient(160deg, #0A0A12 0%, #08020F 30%, #0C0E14 65%, #07090C 100%);
+}
+
+/* Redesign zone declarations to unify styles strictly */
+:root.zone-hospital, :root.zone-cai-nghien {
+  --zone-primary: var(--primary);
+  --zone-primary-light: var(--primary-light);
+  --zone-primary-lighter: var(--card);
+  --zone-accent: var(--accent);
+  --zone-accent-light: var(--border);
+  --zone-bg-gradient: linear-gradient(135deg, var(--bg) 0%, var(--card) 50%, var(--bg2) 100%);
+  --zone-card-glow: rgba(42, 52, 57, 0.05);
+  --zone-border: var(--border);
+  --zone-header-bg: linear-gradient(135deg, #191C27 0%, var(--primary) 100%);
+}
+
+:root.zone-hospital.dark-mode, :root.zone-cai-nghien.dark-mode {
+  --zone-primary: var(--primary);
+  --zone-primary-light: var(--primary-light);
+  --zone-primary-lighter: var(--bg2);
+  --zone-accent: var(--accent);
+  --zone-accent-light: var(--border2);
+  --zone-bg-gradient: linear-gradient(135deg, var(--bg3) 0%, var(--bg) 50%, var(--bg2) 100%);
+  --zone-card-glow: rgba(144, 144, 192, 0.12);
+  --zone-border: var(--border);
+  --zone-header-bg: linear-gradient(135deg, #120321 0%, var(--bg2) 100%);
+}
+
+@keyframes eerieGlow {
+  0%   { opacity: 0.55; transform: scale(1); }
+  50%  { opacity: 0.95;   transform: scale(1.02); }
+  100% { opacity: 0.7; transform: scale(1.01); }
+}
+
+.eerie-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 65% 50% at 20% 80%, rgba(144, 144, 192, 0.14) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 80% 20%, rgba(196, 174, 173, 0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(1, 1, 39, 0.3) 0%, transparent 80%);
+  animation: eerieGlow 8s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 2.5s infinite;
+}
+
+@keyframes tickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.ticker-scroll {
+  animation: tickerScroll 8s linear infinite;
+  padding-left: 100%;
+}
+

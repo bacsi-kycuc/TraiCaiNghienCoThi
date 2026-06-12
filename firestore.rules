@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Default fallback security gate: Deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global schema and domain-level sanitization helpers
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function incoming(req) { 
+      return req.resource.data; 
+    }
+
+    // 3. Validation Rules for App Datasets
+
+    // Gigs/Genres Collection
+    match /genres/{genreId} {
+      allow read: if true;
+      allow create, update: if isValidId(genreId)
+        && incoming(request).keys().hasAll(['name', 'icon', 'zone']) 
+        && incoming(request).keys().size() == 3
+        && incoming(request).name is string && incoming(request).name.size() > 0 && incoming(request).name.size() <= 100
+        && incoming(request).icon is string && incoming(request).icon.size() > 0 && incoming(request).icon.size() <= 10
+        && (incoming(request).zone == 'hospital' || incoming(request).zone == 'cai-nghien');
+      allow delete: if true;
+    }
+
+    // Prompts Collection
+    match /prompts/{promptId} {
+      allow read: if true;
+      allow create, update: if isValidId(promptId)
+        && incoming(request).keys().hasAll(['id', 'title', 'url', 'icon', 'description', 'genre', 'tags', 'zone', 'createdAt', 'updatedAt'])
+        && incoming(request).keys().size() == 10
+        && incoming(request).id is int
+        && incoming(request).title is string && incoming(request).title.size() > 0 && incoming(request).title.size() <= 255
+        && incoming(request).url is string && incoming(request).url.size() >= 0 && incoming(request).url.size() <= 2000
+        && incoming(request).icon is string && incoming(request).icon.size() > 0 && incoming(request).icon.size() <= 10
+        && incoming(request).description is string && incoming(request).description.size() >= 0 && incoming(request).description.size() <= 10000
+        && incoming(request).genre is string && incoming(request).genre.size() > 0 && incoming(request).genre.size() <= 100
+        && incoming(request).tags is list && incoming(request).tags.size() <= 20
+        && (incoming(request).zone == 'hospital' || incoming(request).zone == 'cai-nghien')
+        && incoming(request).createdAt is string && incoming(request).createdAt.size() <= 50
+        && incoming(request).updatedAt is string && incoming(request).updatedAt.size() <= 50;
+      allow delete: if true;
+    }
+
+    // Admission logs/Records Collection
+    match /records/{recordId} {
+      allow read: if true;
+      allow create, update: if isValidId(recordId)
+        && incoming(request).keys().hasAll(['id', 'name', 'age', 'genre', 'note', 'symptoms', 'zone', 'date'])
+        && incoming(request).keys().size() == 8
+        && incoming(request).id is int
+        && incoming(request).name is string && incoming(request).name.size() > 0 && incoming(request).name.size() <= 100
+        && incoming(request).age is string && incoming(request).age.size() > 0 && incoming(request).age.size() <= 100
+        && incoming(request).genre is string && incoming(request).genre.size() > 0 && incoming(request).genre.size() <= 100
+        && incoming(request).note is string && incoming(request).note.size() >= 0 && incoming(request).note.size() <= 10000
+        && incoming(request).symptoms is list && incoming(request).symptoms.size() <= 20
+        && (incoming(request).zone == 'hospital' || incoming(request).zone == 'cai-nghien')
+        && incoming(request).date is string && incoming(request).date.size() > 0 && incoming(request).date.size() <= 50;
+      allow delete: if true;
+    }
+
+    // Dynamic system configurations (Settings)
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow create, update: if isValidId(settingsId)
+        && incoming(request).keys().hasAll([
+          'discordLink', 'facebookLink', 
+          'welcomeBgImage', 'welcomeBgFileName', 
+          'hospitalBgImage', 'hospitalBgFileName', 
+          'cainhienBgImage', 'cainhienBgFileName', 
+          'musicName', 'musicData', 'musicUrl'
+        ])
+        && incoming(request).keys().size() == 11
+        && incoming(request).discordLink is string && incoming(request).discordLink.size() <= 2000
+        && incoming(request).facebookLink is string && incoming(request).facebookLink.size() <= 2000
+        && incoming(request).welcomeBgImage is string && incoming(request).welcomeBgImage.size() <= 15000000
+        && incoming(request).welcomeBgFileName is string && incoming(request).welcomeBgFileName.size() <= 255
+        && incoming(request).hospitalBgImage is string && incoming(request).hospitalBgImage.size() <= 15000000
+        && incoming(request).hospitalBgFileName is string && incoming(request).hospitalBgFileName.size() <= 255
+        && incoming(request).cainhienBgImage is string && incoming(request).cainhienBgImage.size() <= 15000000
+        && incoming(request).cainhienBgFileName is string && incoming(request).cainhienBgFileName.size() <= 255
+        && incoming(request).musicName is string && incoming(request).musicName.size() <= 255
+        && incoming(request).musicData is string && incoming(request).musicData.size() <= 15000000
+        && incoming(request).musicUrl is string && incoming(request).musicUrl.size() <= 2000;
+      allow delete: if true;
+    }
+  }
+}

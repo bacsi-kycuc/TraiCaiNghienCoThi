@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Genre": {
+      "title": "Genre",
+      "description": "Category or department representing psychiatric specialty in zones",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "zone": { "type": "string", "enum": ["hospital", "cai-nghien"] }
+      },
+      "required": ["name", "icon", "zone"]
+    },
+    "Prompt": {
+      "title": "Prompt",
+      "description": "A detailed medical profile or character prompt card",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "icon": { "type": "string" },
+        "description": { "type": "string" },
+        "genre": { "type": "string" },
+        "tags": { "type": "array" },
+        "zone": { "type": "string", "enum": ["hospital", "cai-nghien"] },
+        "password": { "type": "string" },
+        "passwordHint": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "url", "icon", "description", "genre", "tags", "zone"]
+    },
+    "RegRecord": {
+      "title": "RegRecord",
+      "description": "Diagnostic questionnaire profile from clients",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "string" },
+        "genre": { "type": "string" },
+        "note": { "type": "string" },
+        "symptoms": { "type": "array" },
+        "zone": { "type": "string", "enum": ["hospital", "cai-nghien"] },
+        "date": { "type": "string" }
+      },
+      "required": ["name", "age", "genre", "note", "symptoms", "zone", "date"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Application and environment configuration preferences",
+      "type": "object",
+      "properties": {
+        "discordLink": { "type": "string" },
+        "facebookLink": { "type": "string" },
+        "welcomeBgImage": { "type": "string" },
+        "welcomeBgFileName": { "type": "string" },
+        "hospitalBgImage": { "type": "string" },
+        "hospitalBgFileName": { "type": "string" },
+        "cainhienBgImage": { "type": "string" },
+        "cainhienBgFileName": { "type": "string" },
+        "musicName": { "type": "string" },
+        "musicData": { "type": "string" },
+        "musicUrl": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "genres": {
+      "schema": "Genre",
+      "description": "List of genres classified by zone"
+    },
+    "prompts": {
+      "schema": "Prompt",
+      "description": "Character or psychiatric prompts shared globally"
+    },
+    "records": {
+      "schema": "RegRecord",
+      "description": "User diagnostic entries"
+    },
+    "settings": {
+      "schema": "Settings",
+      "description": "Global settings and app customization"
+    }
+  }
+}
