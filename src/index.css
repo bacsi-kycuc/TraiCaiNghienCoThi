@@ -6,95 +6,83 @@
   --font-comfortaa: "Comfortaa", cursive;
   --font-mono: "Space Grotesk", sans-serif;
   --font-serif: "Cormorant Garamond", serif;
+
+  --color-witchy-midnight: #240321;
+  --color-witchy-smoky: #4F3841;
+  --color-witchy-velvet: #957F89;
+  --color-witchy-haze: #CFC3E4;
+  --color-witchy-dust: #FFFAFB;
 }
 
-/* Custom CSS variables designed from user Shades of Black and Shades of Gray palettes */
+/* Custom CSS variables designed from user Shades of Black and Shades of Gray palettes + Witchy Palette */
 :root {
-  /* Shades of Gray core background & layout (Light mode) */
-  --bg: #DADADA; /* Gentle Gray */
-  --bg2: #DBE2E9; /* Chrome Gray */
-  --bg3: #C4C3D0; /* Lavender Gray */
-  --card: #E7DADA; /* Pink Gray styles */
-  --border: #91A3B0; /* Cadet Gray */
-  --border2: #657383; /* Slate Gray */
-  --primary: #2A3439; /* Gun Metal Gray */
-  --primary-light: #4F666A; /* Storm Cloud Gray */
-  --accent: #C4AEAD; /* Silver Pink */
-  --success: #253529; /* Black Leather Jacket */
-  --text: #191C27; /* Black Denim */
-  --text-muted: #4D4D5C; /* Porpoise Gray */
+  /* Witchy design palette colors */
+  --witchy-midnight: #240321;   /* Midnight Coven */
+  --witchy-smoky: #4F3841;      /* Smoky Altar */
+  --witchy-velvet: #957F89;     /* Worn Velvet */
+  --witchy-haze: #CFC3E4;       /* Astral Haze */
+  --witchy-dust: #FFFAFB;       /* Moon Dust */
+
+  /* Permanent Dark Mode & Witchy Design Custom Color Combination */
+  --bg: #150213;                /* Extremely deep purple-black background */
+  --bg2: #240321;               /* Midnight Coven for structural header/sidebar/panels */
+  --bg3: #1B011A;               /* Secondary dark background */
+  --card: #2D1429;              /* Warm purple/indigo card background */
+  --border: #4F3841;            /* Smoky Altar for subtle, elegant divider lines */
+  --border2: #957F89;           /* Worn Velvet for highlighted borders */
+  --primary: #CFC3E4;           /* Astral Haze - soft violet for primary triggers & tags */
+  --primary-light: #FFFAFB;     /* Moon Dust - high visibility accents */
+  --accent: #957F89;            /* Worn Velvet highlights */
+  --success: #3D2D3B;           /* Velvet tint for success backgrounds */
+  --text: #FFFAFB;              /* Moon Dust for highly readable classical text */
+  --text-muted: #CFC3E4;        /* Astral Haze for secondary information text */
   --radius: 20px;
   --radius-sm: 12px;
-  --shadow: 0 10px 25px rgba(42, 52, 57, 0.08);
+  --shadow: 0 12px 30px rgba(17, 1, 15, 0.6);
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Unified host zone palettes based on Shades of Gray */
-  --zone-primary: #2A3439; /* Gun Metal Gray */
-  --zone-primary-light: #4F666A; /* Storm Cloud Gray */
-  --zone-primary-lighter: #E7DADA; /* Pink Gray block backup */
-  --zone-accent: #7C6E7F; /* Dove Gray */
-  --zone-accent-light: #9090C0; /* Cool Gray */
-  --zone-bg-gradient: linear-gradient(135deg, #DADADA 0%, #E7DADA 50%, #DBE2E9 100%);
-  --zone-card-glow: rgba(42, 52, 57, 0.05);
-  --zone-border: #91A3B0; /* Cadet Gray */
-  --zone-header-bg: linear-gradient(135deg, #191C27 0%, #2A3439 100%); /* Elegant Black Denim to Gun Metal Gray */
+  /* Unified dark host zone palettes based on Witchy Color Combinations */
+  --zone-primary: #CFC3E4;      /* Astral Haze */
+  --zone-primary-light: #957F89; /* Worn Velvet */
+  --zone-primary-lighter: #240321; /* Midnight Coven dark backdrops */
+  --zone-accent: #CFC3E4;       /* Astral Haze decorative highlights */
+  --zone-accent-light: #4F3841; /* Smoky Altar elements */
+  --zone-bg-gradient: linear-gradient(135deg, #150213 0%, #240321 50%, #1D021B 100%);
+  --zone-card-glow: rgba(207, 195, 228, 0.15);
+  --zone-border: #4F3841;       /* Smoky Altar frames */
+  --zone-header-bg: linear-gradient(135deg, #240321 0%, #150213 100%); /* Elegant Midnight Coven gradient */
 
-  --welcome-bg: linear-gradient(160deg, #A8A8B4 0%, #BBAAAB 30%, #9C8988 65%, #AEBAC6 100%);
+  /* Dark Witchy design layout (deep coven room) */
+  --welcome-bg: linear-gradient(160deg, #150213 0%, var(--witchy-midnight) 35%, var(--witchy-smoky) 80%, #0E000D 100%);
+  --glow-color-1: rgba(36, 3, 33, 0.75);   /* Midnight Coven dense shadow */
+  --glow-color-2: rgba(79, 56, 65, 0.65);   /* Smoky Altar fog */
+  --glow-color-3: rgba(207, 195, 228, 0.25); /* Astral Haze highlights */
 }
 
-:root.dark-mode {
-  /* Shades of Black core backgrounds (Dark mode) */
-  --bg: #151922; /* Cool Black */
-  --bg2: #191C27; /* Black Denim */
-  --bg3: #010127; /* Black Rock */
-  --card: #24252B; /* Black Russian */
-  --border: #4D4D5C; /* Porpoise Gray */
-  --border2: #657383; /* Slate Gray */
-  --primary: #9090C0; /* Cool Gray primary interactive accents */
-  --primary-light: #C4C3D0; /* Lavender Gray transition values */
-  --accent: #C4AEAD; /* Silver Pink highlights */
-  --success: #253529; /* Black Leather Jacket status highlights */
-  --text: #DADADA; /* Gentle Gray read text */
-  --text-muted: #A7A6BA; /* Purple Gray reading secondary text */
-  --shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-
-  /* Unified dark host zone palettes based on Shades of Black as accents */
-  --zone-primary: #9090C0; /* Cool Gray */
-  --zone-primary-light: #A7A6BA; /* Purple Gray */
-  --zone-primary-lighter: #191C27; /* Black Denim dark backdrops */
-  --zone-accent: #C4AEAD; /* Silver Pink decorative highlights */
-  --zone-accent-light: #B29CA2; /* Dusty Gray styling accent */
-  --zone-bg-gradient: linear-gradient(135deg, #010127 0%, #151922 50%, #191C27 100%);
-  --zone-card-glow: rgba(144, 144, 192, 0.12);
-  --zone-border: #4D4D5C; /* Porpoise Gray frames */
-  --zone-header-bg: linear-gradient(135deg, #120321 0%, #191C27 100%); /* Gothic Grape to Black Denim premium headers */
-
-  --welcome-bg: linear-gradient(160deg, #0A0A12 0%, #08020F 30%, #0C0E14 65%, #07090C 100%);
-}
-
-/* Redesign zone declarations to unify styles strictly */
-:root.zone-hospital, :root.zone-cai-nghien {
-  --zone-primary: var(--primary);
-  --zone-primary-light: var(--primary-light);
-  --zone-primary-lighter: var(--card);
-  --zone-accent: var(--accent);
-  --zone-accent-light: var(--border);
-  --zone-bg-gradient: linear-gradient(135deg, var(--bg) 0%, var(--card) 50%, var(--bg2) 100%);
-  --zone-card-glow: rgba(42, 52, 57, 0.05);
-  --zone-border: var(--border);
-  --zone-header-bg: linear-gradient(135deg, #191C27 0%, var(--primary) 100%);
-}
-
-:root.zone-hospital.dark-mode, :root.zone-cai-nghien.dark-mode {
+/* Map alternate classes and states always to the dark-mode Witchy Design variables */
+:root.dark-mode, :root.zone-hospital, :root.zone-cai-nghien, :root.zone-hospital.dark-mode, :root.zone-cai-nghien.dark-mode {
+  --bg: #150213;
+  --bg2: #240321;
+  --bg3: #1B011A;
+  --card: #2D1429;
+  --border: #4F3841;
+  --border2: #957F89;
+  --primary: #CFC3E4;
+  --primary-light: #FFFAFB;
+  --accent: #957F89;
+  --success: #3D2D3B;
+  --text: #FFFAFB;
+  --text-muted: #CFC3E4;
+  --shadow: 0 12px 30px rgba(17, 1, 15, 0.6);
   --zone-primary: var(--primary);
   --zone-primary-light: var(--primary-light);
   --zone-primary-lighter: var(--bg2);
   --zone-accent: var(--accent);
   --zone-accent-light: var(--border2);
   --zone-bg-gradient: linear-gradient(135deg, var(--bg3) 0%, var(--bg) 50%, var(--bg2) 100%);
-  --zone-card-glow: rgba(144, 144, 192, 0.12);
+  --zone-card-glow: rgba(207, 195, 228, 0.15);
   --zone-border: var(--border);
-  --zone-header-bg: linear-gradient(135deg, #120321 0%, var(--bg2) 100%);
+  --zone-header-bg: linear-gradient(135deg, #240321 0%, var(--bg2) 100%);
 }
 
 @keyframes eerieGlow {
@@ -109,9 +97,9 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 65% 50% at 20% 80%, rgba(144, 144, 192, 0.14) 0%, transparent 70%),
-    radial-gradient(ellipse 55% 45% at 80% 20%, rgba(196, 174, 173, 0.12) 0%, transparent 65%),
-    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(1, 1, 39, 0.3) 0%, transparent 80%);
+    radial-gradient(ellipse 65% 50% at 20% 80%, var(--glow-color-1) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 80% 20%, var(--glow-color-2) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, var(--glow-color-3) 0%, transparent 80%);
   animation: eerieGlow 8s ease-in-out infinite alternate;
   z-index: 0;
 }

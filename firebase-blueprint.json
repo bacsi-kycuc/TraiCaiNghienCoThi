@@ -8,6 +8,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "icon": { "type": "string" },
+        "description": { "type": "string" },
         "zone": { "type": "string", "enum": ["hospital", "cai-nghien"] }
       },
       "required": ["name", "icon", "zone"]

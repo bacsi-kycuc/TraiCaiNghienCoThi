@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FolderPlus, Image, Music, Link as LinkIcon, Trash, User, LogOut } from 'lucide-react';
+import { X, FolderPlus, Image, Music, Link as LinkIcon, Trash, User, LogOut, Edit2 } from 'lucide-react';
 import { Genre, Settings } from '../types';
 
 interface SettingsModalProps {
@@ -9,6 +9,7 @@ interface SettingsModalProps {
   genresCaiNghien: Genre[];
   onAddGenre: (name: string, icon: string, zone: 'hospital' | 'cai-nghien', description?: string) => void;
   onDeleteGenre: (name: string, zone: 'hospital' | 'cai-nghien') => void;
+  onUpdateGenre?: (oldName: string, oldZone: 'hospital' | 'cai-nghien', newName: string, newIcon: string, newZone: 'hospital' | 'cai-nghien', description?: string) => Promise<void>;
   settings: Settings;
   onSaveSettings: (key: keyof Settings, value: string) => void;
   onAdminLogout?: () => void;
@@ -23,6 +24,7 @@ export default function SettingsModal({
   genresCaiNghien,
   onAddGenre,
   onDeleteGenre,
+  onUpdateGenre,
   settings,
   onSaveSettings,
   onAdminLogout
@@ -34,6 +36,11 @@ export default function SettingsModal({
   const [newGenreIcon, setNewGenreIcon] = useState('');
   const [newGenreDescription, setNewGenreDescription] = useState('');
   const [newGenreZone, setNewGenreZone] = useState<'hospital' | 'cai-nghien'>('cai-nghien');
+
+  // Editing genre states
+  const [editingGenre, setEditingGenre] = useState<Genre | null>(null);
+  const [editingGenreOriginalName, setEditingGenreOriginalName] = useState('');
+  const [editingGenreOriginalZone, setEditingGenreOriginalZone] = useState<'hospital' | 'cai-nghien'>('cai-nghien');
 
   // Input states for links & music
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -75,15 +82,53 @@ export default function SettingsModal({
     }
   };
 
-  const handleSaveGenre = () => {
+  const handleSaveGenre = async () => {
     if (!newGenreName.trim()) {
       alert('⚠️ Vui lòng điền vào Tên Khoa Bệnh!');
       return;
     }
-    onAddGenre(newGenreName.trim(), newGenreIcon.trim() || '🏨', 'cai-nghien', newGenreDescription.trim());
+    const name = newGenreName.trim();
+    const icon = newGenreIcon.trim() || '🏨';
+    const description = newGenreDescription.trim();
+
+    if (editingGenre && onUpdateGenre) {
+      await onUpdateGenre(
+        editingGenreOriginalName,
+        editingGenreOriginalZone,
+        name,
+        icon,
+        newGenreZone,
+        description
+      );
+      // Clear editing state
+      setEditingGenre(null);
+      setEditingGenreOriginalName('');
+    } else {
+      onAddGenre(name, icon, newGenreZone, description);
+    }
     setNewGenreName('');
     setNewGenreIcon('');
     setNewGenreDescription('');
+    setNewGenreZone('cai-nghien');
+  };
+
+  const handleStartEdit = (g: Genre, zone: 'hospital' | 'cai-nghien') => {
+    setEditingGenre(g);
+    setEditingGenreOriginalName(g.name);
+    setEditingGenreOriginalZone(zone);
+    setNewGenreName(g.name);
+    setNewGenreIcon(g.icon || '🏨');
+    setNewGenreDescription(g.description || '');
+    setNewGenreZone(zone);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingGenre(null);
+    setEditingGenreOriginalName('');
+    setNewGenreName('');
+    setNewGenreIcon('');
+    setNewGenreDescription('');
+    setNewGenreZone('cai-nghien');
   };
 
   const handleSaveLinks = () => {
@@ -102,48 +147,48 @@ export default function SettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[10000] p-4 transition-opacity duration-350">
-      <div className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-3xl p-6 w-full max-w-[800px] shadow-2xl max-h-[92vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out]">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-[10000] p-4 transition-opacity duration-350">
+      <div className="bg-[var(--card)] text-[var(--text)] rounded-3xl p-6 w-full max-w-[800px] shadow-2xl max-h-[92vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out] border border-[var(--border)]">
         
         {/* Header */}
-        <div className="flex justify-between items-center pb-4 border-b border-slate-100 dark:border-slate-700">
-          <span className="text-xl font-bold font-comfortaa text-[var(--zone-primary)] dark:text-slate-100 flex items-center gap-1.5 animate-pulse">
+        <div className="flex justify-between items-center pb-4 border-b border-[var(--border)]">
+          <span className="text-xl font-bold font-comfortaa text-[var(--primary)] flex items-center gap-1.5 animate-pulse">
             ⚙️ Cấu Hình Hệ Thống Trại
           </span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl my-4 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 bg-[var(--bg2)] p-1.5 rounded-2xl my-4 overflow-x-auto scrollbar-none">
           <button 
             onClick={() => setActiveTab('categories')}
-            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'categories' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'categories' ? 'bg-[var(--primary)] text-[var(--bg2)] shadow' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'}`}
           >
             🗂️ Khoa Điều Trị
           </button>
           <button 
             onClick={() => setActiveTab('backgrounds')}
-            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'backgrounds' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'backgrounds' ? 'bg-[var(--primary)] text-[var(--bg2)] shadow' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'}`}
           >
             🖼️ Hình Nền
           </button>
           <button 
             onClick={() => setActiveTab('music')}
-            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'music' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'music' ? 'bg-[var(--primary)] text-[var(--bg2)] shadow' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'}`}
           >
             🎵 Nhạc Nền
           </button>
           <button 
             onClick={() => setActiveTab('links')}
-            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'links' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'links' ? 'bg-[var(--primary)] text-[var(--bg2)] shadow' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'}`}
           >
             🔗 Liên Kết
           </button>
           <button 
             onClick={() => setActiveTab('account')}
-            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'account' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-slate-500 hover:bg-slate-200/55 dark:hover:bg-slate-800'}`}
+            className={`flex-1 overflow-visible whitespace-nowrap min-w-fit py-1.5 px-3 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === 'account' ? 'bg-[var(--primary)] text-[var(--bg2)] shadow' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'}`}
           >
             👤 Tài Khoản
           </button>
@@ -157,9 +202,20 @@ export default function SettingsModal({
             <div className="space-y-4 animate-[in_0.15s_ease-out]">
 
               <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 space-y-3.5">
-                <div className="grid grid-cols-3 gap-3 items-start">
-                  <div className="col-span-2 space-y-1">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Tên khoa mới</label>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block">Phân Khoa</label>
+                    <select
+                      value={newGenreZone}
+                      onChange={(e) => setNewGenreZone(e.target.value as 'hospital' | 'cai-nghien')}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
+                    >
+                      <option value="cai-nghien">💊 Trại Cai Nghiện</option>
+                      <option value="hospital">🏥 Bệnh Viện</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide block">Tên khoa mới</label>
                     <input 
                       type="text" 
                       placeholder="Nhập tên khoa mới..." 
@@ -169,7 +225,7 @@ export default function SettingsModal({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-750 dark:text-slate-250 uppercase tracking-wide">Sticker emoji</label>
+                    <label className="text-xs font-bold text-slate-750 dark:text-slate-250 uppercase tracking-wide block">Sticker emoji</label>
                     <input 
                       type="text" 
                       placeholder="🏷️"
@@ -192,12 +248,20 @@ export default function SettingsModal({
                   />
                 </div>
 
-                <div className="flex justify-end pt-1">
+                <div className="flex justify-end pt-1 gap-2">
+                  {editingGenre && (
+                    <button 
+                      onClick={handleCancelEdit}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer border border-slate-200 dark:border-slate-700 hover:scale-[1.02] active:scale-95"
+                    >
+                      Hủy bỏ
+                    </button>
+                  )}
                   <button 
                     onClick={handleSaveGenre}
                     className="bg-[var(--zone-primary)] hover:bg-[var(--zone-primary-light)] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer shadow flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-95"
                   >
-                    <FolderPlus className="w-4 h-4" /> Khởi tạo chuyên khoa
+                    <FolderPlus className="w-4 h-4" /> {editingGenre ? 'Lưu thay đổi' : 'Khởi tạo chuyên khoa'}
                   </button>
                 </div>
               </div>
@@ -221,12 +285,22 @@ export default function SettingsModal({
                           <span className="text-[8px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 font-semibold px-1 rounded-sm mt-0.5">🏥 Bệnh Viện</span>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => onDeleteGenre(g.name, 'hospital')}
-                        className="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer ml-1 transition"
-                      >
-                        <Trash className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex gap-1 ml-1 items-center">
+                        <button 
+                          onClick={() => handleStartEdit(g, 'hospital')}
+                          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
+                          title="Sửa chuyên khoa"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => onDeleteGenre(g.name, 'hospital')}
+                          className="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer transition"
+                          title="Xóa chuyên khoa"
+                        >
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {genresCaiNghien.map((g) => (
@@ -242,12 +316,22 @@ export default function SettingsModal({
                           <span className="text-[8px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 font-semibold px-1 rounded-sm mt-0.5">💊 Trại</span>
                         </div>
                       </div>
-                      <button 
-                        onClick={() => onDeleteGenre(g.name, 'cai-nghien')}
-                        className="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer ml-1 transition"
-                      >
-                        <Trash className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex gap-1 ml-1 items-center">
+                        <button 
+                          onClick={() => handleStartEdit(g, 'cai-nghien')}
+                          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
+                          title="Sửa chuyên khoa"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => onDeleteGenre(g.name, 'cai-nghien')}
+                          className="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer transition"
+                          title="Xóa chuyên khoa"
+                        >
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -452,10 +536,10 @@ export default function SettingsModal({
         </div>
 
         {/* Footer closing button */}
-        <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">
+        <div className="flex gap-2 pt-4 border-t border-[var(--border)] mt-4">
           <button 
             onClick={onClose}
-            className="w-full bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer border border-slate-200 dark:border-slate-700"
+            className="w-full bg-[var(--bg2)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg)] font-bold py-2.5 rounded-xl text-xs transition cursor-pointer border border-[var(--border)]"
           >
             ✕ Đóng cấu hình
           </button>

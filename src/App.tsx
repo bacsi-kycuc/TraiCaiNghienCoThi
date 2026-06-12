@@ -30,7 +30,7 @@ export default function App() {
   // --- Screen & Zone Routing ---
   const [currentScreen, setCurrentScreen] = useState<'welcome' | 'app'>('welcome');
   const [currentZone, setCurrentZone] = useState<'hospital' | 'cai-nghien'>('cai-nghien');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   // --- Auth states ---
   const [isAdmin, setIsAdmin] = useState(false);
@@ -82,10 +82,11 @@ export default function App() {
 
   // --- Initial System Hydration on mount ---
   useEffect(() => {
-    // 1. Theme hydration
-    const savedTheme = (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
-    setTheme(savedTheme);
-    document.documentElement.classList.toggle('dark-mode', savedTheme === 'dark');
+    // 1. Theme hydration - locked to dark
+    setTheme('dark');
+    localStorage.setItem('theme', 'dark');
+    document.documentElement.classList.add('dark-mode');
+    document.documentElement.classList.add('dark');
 
     // 2. Auth Session verification
     const adminLogged = localStorage.getItem('adminLogged') === 'true';
@@ -268,12 +269,9 @@ export default function App() {
     }
   };
 
-  // Theme Toggler
+  // Theme Toggler - Disabled as requested
   const toggleTheme = () => {
-    const targetTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(targetTheme);
-    localStorage.setItem('theme', targetTheme);
-    document.documentElement.classList.toggle('dark-mode', targetTheme === 'dark');
+    // Permanently locked to dark-mode Witchy Coven theme
   };
 
   // Admin Credentials validation with absolute one-way cryptographic hashing (preventing reverse engineering)
@@ -401,13 +399,44 @@ export default function App() {
     }
   };
 
-  const handleAddGenre = async (name: string, icon: string, targetZone: 'hospital' | 'cai-nghien') => {
+  const handleAddGenre = async (name: string, icon: string, targetZone: 'hospital' | 'cai-nghien', description?: string) => {
     const docId = `${targetZone}_${name}`.replace(/[^a-zA-Z0-9_\-]/g, '_');
     try {
-      await setDoc(doc(db, 'genres', docId), { name, icon, zone: targetZone });
+      const genreData: any = { name, icon, zone: targetZone };
+      if (description) {
+        genreData.description = description;
+      }
+      await setDoc(doc(db, 'genres', docId), genreData);
       setToastMessage(`📂 Đã khởi tạo Chuyên khoa mới: ${icon} ${name}`);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `genres/${docId}`);
+    }
+  };
+
+  const handleUpdateGenre = async (
+    oldName: string, 
+    oldZone: 'hospital' | 'cai-nghien', 
+    newName: string, 
+    newIcon: string, 
+    newZone: 'hospital' | 'cai-nghien',
+    newDescription?: string
+  ) => {
+    const oldDocId = `${oldZone}_${oldName}`.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const newDocId = `${newZone}_${newName}`.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    try {
+      // If the name or zone has changed, we must delete the old document to avoid duplicates
+      if (oldName !== newName || oldZone !== newZone) {
+        await deleteDoc(doc(db, 'genres', oldDocId));
+      }
+      
+      const genreData: any = { name: newName, icon: newIcon, zone: newZone };
+      if (newDescription) {
+        genreData.description = newDescription;
+      }
+      await setDoc(doc(db, 'genres', newDocId), genreData);
+      setToastMessage(`💾 Đã cập nhật chuyên khoa: ${newIcon} ${newName}`);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `genres/${newDocId}`);
     }
   };
 
@@ -524,8 +553,6 @@ export default function App() {
             onAdminLogout={() => setShowLogoutConfirm(true)}
             discordLink={settings.discordLink}
             facebookLink={settings.facebookLink}
-            theme={theme}
-            onToggleTheme={toggleTheme}
           />
         )}
 
@@ -572,14 +599,6 @@ export default function App() {
 
               {/* Header Right controllers */}
               <div className="flex items-center gap-3 relative z-2 w-full md:w-auto justify-end">
-                <button 
-                  onClick={toggleTheme}
-                  className="w-10 h-10 rounded-full border border-white/30 hover:bg-white/10 flex items-center justify-center transition cursor-pointer active:scale-90"
-                  title="Đổi Giao diện"
-                >
-                  {theme === 'dark' ? <Sun className="w-4.5 h-4.5 text-yellow-300" /> : <Moon className="w-4.5 h-4.5 text-slate-100" />}
-                </button>
-
                 {isAdmin && (
                   <>
                     <span className="bg-white/20 text-white font-bold py-1.5 px-3 rounded-full border border-white/30 text-xs backdrop-blur-xs flex items-center gap-1">
@@ -815,6 +834,7 @@ export default function App() {
         genresCaiNghien={genresCaiNghien}
         onAddGenre={handleAddGenre}
         onDeleteGenre={handleDeleteGenre}
+        onUpdateGenre={handleUpdateGenre}
         settings={settings}
         onSaveSettings={handleSaveSettings}
         onAdminLogout={() => {

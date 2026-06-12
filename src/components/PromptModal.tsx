@@ -112,15 +112,15 @@ export default function PromptModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[10000] p-4 transition-opacity duration-350">
-      <div className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-3xl p-6 w-full max-w-[600px] shadow-2xl max-h-[90vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out] border border-slate-100 dark:border-slate-700">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-[10000] p-4 transition-opacity duration-350">
+      <div className="bg-[var(--card)] text-[var(--text)] rounded-3xl p-6 w-full max-w-[600px] shadow-2xl max-h-[90vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out] border-2 border-[var(--border)]">
         
         {/* Header */}
-        <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-100 dark:border-slate-700">
-          <span className="text-xl font-bold font-comfortaa text-[var(--zone-primary)] dark:text-slate-100">
+        <div className="flex justify-between items-center pb-4 mb-4 border-b border-[var(--border)]">
+          <span className="text-xl font-bold font-comfortaa text-[var(--primary)]">
             {editingPrompt ? '✏️ Chỉnh Sửa Bệnh Án (Prompt)' : '🏥 Thêm Bệnh Án Mới'}
           </span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -251,17 +251,17 @@ export default function PromptModal({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-700 mt-4 flex-wrap">
+        <div className="flex gap-2 pt-4 border-t border-[var(--border)] mt-4 flex-wrap">
           <button 
             onClick={handleFormSubmit}
-            className="flex-1 bg-[var(--zone-primary)] hover:bg-[var(--zone-primary-light)] text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow hover:scale-105 active:scale-95"
+            className="flex-1 bg-[var(--primary)] text-[var(--bg2)] font-extrabold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow hover:scale-105 active:scale-95"
           >
             💾 Tải Bệnh Án
           </button>
           
           <button 
             onClick={onClose}
-            className="flex-1 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-2.5 rounded-xl text-xs transition border border-slate-200 dark:border-slate-700 cursor-pointer"
+            className="flex-1 bg-[var(--bg2)] text-[var(--text-muted)] hover:text-white font-bold py-2.5 rounded-xl text-xs transition border border-[var(--border)] cursor-pointer"
           >
             Đóng
           </button>
@@ -269,7 +269,7 @@ export default function PromptModal({
           {editingPrompt && onDelete && (
             <button 
               onClick={() => onDelete(editingPrompt.id, editingPrompt.zone)}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold p-2.5 rounded-xl cursor-pointer transition flex items-center justify-center shadow"
+              className="bg-rose-950 hover:bg-rose-900 border border-rose-950 text-rose-100 font-bold p-2.5 rounded-xl cursor-pointer transition flex items-center justify-center shadow"
               title="Xóa Prompt này"
             >
               <Trash2 className="w-5 h-5" />
