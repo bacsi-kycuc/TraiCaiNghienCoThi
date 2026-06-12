@@ -488,13 +488,6 @@ export default function App() {
   const activePrompts = currentZone === 'hospital' ? promptsHospital : promptsCaiNghien;
   const activeGenres = currentZone === 'hospital' ? genresHospital : genresCaiNghien;
 
-  // Render tag clouds containing distinct tags for active zone
-  const getUniqueTags = () => {
-    const tagsSet = new Set<string>();
-    activePrompts.forEach(p => p.tags?.forEach(t => tagsSet.add(t)));
-    return Array.from(tagsSet);
-  };
-
   // Filters mapping
   const filteredPrompts = activePrompts.filter(p => {
     const matchesGenre = activeGenreFilter ? p.genre === activeGenreFilter : true;
@@ -506,6 +499,17 @@ export default function App() {
     ) : true;
     return matchesGenre && matchesTag && matchesSearch;
   });
+
+  // Render tag clouds containing distinct tags for active zone
+  const uniqueTags = (() => {
+    const tagsSet = new Set<string>();
+    if (searchFilter.trim() !== '') {
+      filteredPrompts.forEach(p => p.tags?.forEach(t => tagsSet.add(t)));
+    } else {
+      activePrompts.forEach(p => p.tags?.forEach(t => tagsSet.add(t)));
+    }
+    return Array.from(tagsSet).slice(0, 10);
+  })();
 
   return (
     <div className={`min-h-screen text-[var(--text)] transition-colors duration-300 relative select-none font-sans`}>
@@ -599,10 +603,10 @@ export default function App() {
             </header>
 
             {/* Dashboard grid structure */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+            <div className="flex flex-col gap-6 items-stretch">
               
               {/* Sidebar filter catalog */}
-              <aside className="lg:col-span-1 bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl p-5 shadow-lg backdrop-blur-md text-[var(--text)]">
+              <aside className="bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl p-5 shadow-lg backdrop-blur-md text-[var(--text)]">
                 <h2 className="text-sm font-bold font-comfortaa text-[var(--zone-primary)] border-b border-[var(--zone-border)] pb-2 mb-4">
                   🏨 Danh Khoa Cai Nghiện
                 </h2>
@@ -630,13 +634,13 @@ export default function App() {
               </aside>
 
               {/* Main Contents catalog list */}
-              <main className="lg:col-span-3 flex flex-col gap-5">
+              <main className="flex flex-col gap-5">
                 
                 {/* Search query box */}
                 <div className="p-4 bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl shadow-lg backdrop-blur-md text-[var(--text)]">
                   <input 
                     type="text" 
-                    placeholder="Tìm kiếm Điều dưỡng..."
+                    placeholder="Tìm kiếm triệu chứng hoặc điều dưỡng..."
                     value={searchFilter}
                     onChange={(e) => setSearchFilter(e.target.value)}
                     className="w-full px-4 py-2.5 bg-[var(--bg2)]/80 text-[var(--text)] border-2 border-[var(--zone-border)] rounded-2xl outline-none focus:border-[var(--zone-primary)] text-sm transition"
@@ -645,11 +649,11 @@ export default function App() {
 
                 {/* Tag Clouds catalog */}
                 <div className="flex flex-wrap gap-2 items-center p-4 bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl shadow-lg backdrop-blur-md min-h-[50px] text-[var(--text)]">
-                  <span className="text-xs font-bold text-[var(--text-muted)] mr-2 uppercase tracking-wide">🏷️ Thẻ tag mục sủng:</span>
-                  {getUniqueTags().length === 0 ? (
+                  <span className="text-xs font-bold text-[var(--text-muted)] mr-2 uppercase tracking-wide">🏷️ TRIỆU CHỨNG CẦN CAI:</span>
+                  {uniqueTags.length === 0 ? (
                     <span className="text-xs text-slate-400 italic">Chưa có nhãn tag nào.</span>
                   ) : (
-                    getUniqueTags().map(tag => {
+                    uniqueTags.map(tag => {
                       const isSelected = activeTagFilter.toLowerCase() === tag.toLowerCase();
                       return (
                         <span 
@@ -668,27 +672,35 @@ export default function App() {
                 </div>
 
                 {/* Cards grid */}
-                <div className="prompt-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {filteredPrompts.length === 0 ? (
-                    <div className="col-span-full text-center py-16 bg-[var(--card)]/40 border-2 border-dashed border-[var(--zone-border)] text-[var(--text-muted)] rounded-3xl text-sm flex flex-col items-center justify-center gap-1.5">
-                      <span className="text-3xl">🔍</span>
-                      <span>Không tìm thấy bệnh án thích hợp trong phân khu.</span>
-                    </div>
-                  ) : (
-                    filteredPrompts.map((p) => (
-                      <PromptCard 
-                        key={p.id}
-                        prompt={p}
-                        isAdmin={isAdmin}
-                        onEdit={(prompt) => { setEditingPrompt(prompt); setShowPromptModal(true); }}
-                        onTagClick={(tag) => {
-                          setActiveTagFilter(tag);
-                          setActiveGenreFilter(''); // reset sidebar genre
-                        }}
-                      />
-                    ))
-                  )}
-                </div>
+                <motion.div layout className="prompt-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  <AnimatePresence mode="popLayout">
+                    {filteredPrompts.length === 0 ? (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="col-span-full text-center py-16 bg-[var(--card)]/40 border-2 border-dashed border-[var(--zone-border)] text-[var(--text-muted)] rounded-3xl text-sm flex flex-col items-center justify-center gap-1.5"
+                      >
+                        <span className="text-3xl">🔍</span>
+                        <span>Không tìm thấy bệnh án thích hợp trong phân khu.</span>
+                      </motion.div>
+                    ) : (
+                      filteredPrompts.map((p, i) => (
+                        <PromptCard 
+                          key={p.id}
+                          prompt={p}
+                          isAdmin={isAdmin}
+                          index={i}
+                          onEdit={(prompt) => { setEditingPrompt(prompt); setShowPromptModal(true); }}
+                          onTagClick={(tag) => {
+                            setActiveTagFilter(tag === activeTagFilter ? '' : tag);
+                            setActiveGenreFilter(''); // reset sidebar genre
+                          }}
+                        />
+                      ))
+                    )}
+                  </AnimatePresence>
+                </motion.div>
 
               </main>
 

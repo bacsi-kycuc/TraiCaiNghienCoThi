@@ -9,9 +9,10 @@ interface PromptCardProps {
   isAdmin: boolean;
   onEdit: (prompt: Prompt) => void;
   onTagClick: (tag: string) => void;
+  index?: number;
 }
 
-export default function PromptCard({ prompt, isAdmin, onEdit, onTagClick }: PromptCardProps) {
+export default function PromptCard({ prompt, isAdmin, onEdit, onTagClick, index = 0 }: PromptCardProps) {
   const [passwordInput, setPasswordInput] = useState('');
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
@@ -40,14 +41,19 @@ export default function PromptCard({ prompt, isAdmin, onEdit, onTagClick }: Prom
 
   return (
     <motion.div
+      layout
+      initial={{ opacity: 0, x: -30, y: 15 }}
+      animate={{ opacity: 1, x: 0, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
       whileHover={{ 
-        scale: 1.05,
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4)"
+        scale: 1.03,
+        boxShadow: "0 25px 50px -12px rgba(42, 52, 57, 0.4)"
       }}
       transition={{ 
         type: "spring", 
         stiffness: 260, 
-        damping: 20 
+        damping: 20,
+        delay: Math.min(index * 0.05, 0.5) // Max delay of 0.5s to prevent long waits
       }}
       className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-5 shadow-lg hover:border-[var(--zone-primary)] transition-colors duration-300 relative overflow-hidden flex flex-col justify-between"
     >
