@@ -262,11 +262,16 @@ export default function App() {
 
   // Handle active background styling on APP view container
   const getActiveAppWallpaper = () => {
-    if (currentZone === 'hospital') {
-      return settings.hospitalBgImage ? `url("${settings.hospitalBgImage}")` : 'none';
-    } else {
-      return settings.cainhienBgImage ? `url("${settings.cainhienBgImage}")` : 'none';
+    const bgUrl = currentZone === 'hospital' ? settings.hospitalBgImage : settings.cainhienBgImage;
+    // Thêm một lớp overlay CSS sử dụng 'radial-gradient' với màu tím khói (#4F3841) và độ trong suốt thấp (0.15) vào trong .app-bg để tạo chiều sâu 'Smoky Altar' huyền ảo trên các tấm thẻ bệnh án.
+    const radialOverlay = 'radial-gradient(circle at 50% 50%, rgba(79, 56, 65, 0.15) 0%, rgba(79, 56, 65, 0) 100%)';
+    // Tạo lớp phủ mờ ảo huyền bí hắc ám (overlay) với sắc màu Midnight Coven (#240321) và Smoky Altar (#4F3841) tối sẫm, độ che bóng đạt 11.5% - 95% nhằm tăng chiều sâu lowkey sang trọng
+    const gradientOverlay = 'linear-gradient(160deg, rgba(15, 2, 14, 0.95) 0%, rgba(36, 3, 33, 0.93) 50%, rgba(79, 56, 65, 0.85) 100%)';
+    
+    if (bgUrl) {
+      return `${radialOverlay}, ${gradientOverlay}, url("${bgUrl}")`;
     }
+    return `${radialOverlay}, ${gradientOverlay}`;
   };
 
   // Theme Toggler - Disabled as requested
