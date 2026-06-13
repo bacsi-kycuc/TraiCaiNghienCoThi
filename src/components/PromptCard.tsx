@@ -57,6 +57,8 @@ export default function PromptCard({
       if (onOpenPrompt) {
         onOpenPrompt(prompt);
       }
+      // Dispatch colorful confetti celebratory event
+      window.dispatchEvent(new CustomEvent('celebrate-confetti'));
       // Open link in a new tab
       window.open(prompt.url, '_blank', 'noreferrer,noopener');
     } else {

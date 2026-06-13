@@ -15,6 +15,7 @@ import SettingsModal from './components/SettingsModal';
 import MusicPlayer from './components/MusicPlayer';
 import Toast from './components/Toast';
 import RandomRollBanner from './components/RandomRollBanner';
+import ConfettiCelebration from './components/ConfettiCelebration';
 
 // Default mock values
 import { 
@@ -1124,6 +1125,9 @@ export default function App() {
 
       {/* 6. System Toast alerts */}
       <Toast message={toastMessage} onClose={() => setToastMessage('')} />
+
+      {/* Global Confetti Celebration */}
+      <ConfettiCelebration />
 
     </div>
   );
