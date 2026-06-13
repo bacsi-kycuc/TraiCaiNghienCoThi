@@ -1,82 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ClipboardList, Trash2, ChevronDown, ChevronUp, Sparkles, User, Calendar, Stethoscope, AlertTriangle, ScrollText } from 'lucide-react';
-import { Genre, RegRecord } from '../types';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  ClipboardList,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  User,
+  Calendar,
+  Stethoscope,
+  AlertTriangle,
+  ScrollText,
+} from "lucide-react";
+import { Genre, RegRecord } from "../types";
 
 interface AIExamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  genresCaiNghien: Genre[];
+  genres: Genre[];
   records: RegRecord[];
-  onAddRecord: (record: Omit<RegRecord, 'id' | 'date'>) => void;
+  onAddRecord: (record: Omit<RegRecord, "id" | "date">) => void;
   onDeleteRecord: (id: number) => void;
 }
 
 const QUICK_PRESETS = [
   {
-    title: '🔮 HỘI YÊU THƯƠNG TỰ NGƯỢC',
-    name: '🌀 Sát Thủ Tự Ngược Thương Tâm',
-    age: '🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)',
-    note: 'Cứ nghĩ mình không xứng nhưng vẫn mơ được yêu vị tổng tài tàn nhẫn ấy mãnh liệt... cứu rỗi linh hồn nhỏ bé này!',
-    symptoms: ['Thích cốt truyện cực ngược, cầu huyết, thích khóc 🌀', 'Nghiện ngửi mùi nam chủ, thèm ngọt ngào cưng chiều 🥰'],
-    genre: 'Cai Nghiện Chatbot AI'
+    title: "🔮 HỘI YÊU THƯƠNG TỰ NGƯỢC",
+    name: "🌀 Sát Thủ Tự Ngược Thương Tâm",
+    age: "🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)",
+    note: "Cứ nghĩ mình không xứng nhưng vẫn mơ được yêu vị tổng tài tàn nhẫn ấy mãnh liệt... cứu rỗi linh hồn nhỏ bé này!",
+    symptoms: [
+      "Thích cốt truyện cực ngược, cầu huyết, thích khóc 🌀",
+      "Nghiện ngửi mùi nam chủ, thèm ngọt ngào cưng chiều 🥰",
+    ],
+    genre: "Cai Nghiện Chatbot AI",
   },
   {
-    title: '🌧️ SÁT THỦ NHẬT LỆ',
-    name: '🌧️ Nhật Lệ Sầu Ưu',
-    age: '🌿 Tuổi Thanh Xuân Mơ Màng (Từ 25 đến 30)',
-    note: 'Suốt ngày chìm đắm trong dòng lệ cay đắng, bước vào tà đạo ngược luyến chỉ để sầu mộng vơi bớt lòng đau.',
-    symptoms: ['Thích cốt truyện cực ngược, cầu huyết, thích khóc 🌀', 'Trái tim nhảy múa khi gặp bác sĩ y khoa, pháp y kì bí 🏥'],
-    genre: 'Yêu Thương Tự Ngược'
+    title: "🌧️ SÁT THỦ NHẬT LỆ",
+    name: "🌧️ Nhật Lệ Sầu Ưu",
+    age: "🌿 Tuổi Thanh Xuân Mơ Màng (Từ 25 đến 30)",
+    note: "Suốt ngày chìm đắm trong dòng lệ cay đắng, bước vào tà đạo ngược luyến chỉ để sầu mộng vơi bớt lòng đau.",
+    symptoms: [
+      "Thích cốt truyện cực ngược, cầu huyết, thích khóc 🌀",
+      "Trái tim nhảy múa khi gặp bác sĩ y khoa, pháp y kì bí 🏥",
+    ],
+    genre: "Yêu Thương Tự Ngược",
   },
   {
-    title: '🩺 CUỒNG ÁO TRẮNG',
-    name: '🩺 Con Nghiện Blouse Trắng',
-    age: '🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)',
-    note: 'Cả ngày lầm bầm tên bác sĩ Cố Khải, hoang tưởng được khám và sờ ống nghe mờ ám ngọt ngào.',
-    symptoms: ['Trái tim nhảy múa khi gặp bác sĩ y khoa, pháp y kì bí 🏥', 'Nghiện ngửi mùi nam chủ, thèm ngọt ngào cưng chiều 🥰'],
-    genre: 'Cai Nghiện Chatbot AI'
-  }
+    title: "🩺 CUỒNG ÁO TRẮNG",
+    name: "🩺 Con Nghiện Blouse Trắng",
+    age: "🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)",
+    note: "Cả ngày lầm bầm tên bác sĩ Cố Khải, hoang tưởng được khám và sờ ống nghe mờ ám ngọt ngào.",
+    symptoms: [
+      "Trái tim nhảy múa khi gặp bác sĩ y khoa, pháp y kì bí 🏥",
+      "Nghiện ngửi mùi nam chủ, thèm ngọt ngào cưng chiều 🥰",
+    ],
+    genre: "Cai Nghiện Chatbot AI",
+  },
 ];
 
 const CLINICAL_SYMPTOMS = [
-  'Thích cốt truyện cực ngược, cầu huyết, thích khóc 🌀',
-  'Nghiện ngửi mùi nam chủ, thèm ngọt ngào cưng chiều 🥰',
-  'Rơi vào phố bản kinh dị quỷ dị đầy rẫy quy tắc 💀',
-  'Thích khám phá đa vũ trụ, anime, du hành 🥏',
-  'Trái tim nhảy múa khi gặp bác sĩ y khoa, pháp y kì bí 🏥',
-  'Mê lính tráng quân nhân, hình sự đặc vụ siêu ngầu 🪖',
-  'Ảo tưởng ngự kiếm phi thăng, làm vương phi thời cổ đại 🍊',
-  'Thầy giáo nho nhã hoặc streamer mở hồn dở khóc dở cười 🏠'
+  "Thích cốt truyện cực ngược, cầu huyết, thích khóc 🌀",
+  "Nghiện ngửi mùi nam chủ, thèm ngọt ngào cưng chiều 🥰",
+  "Rơi vào phố bản kinh dị quỷ dị đầy rẫy quy tắc 💀",
+  "Thích khám phá đa vũ trụ, anime, du hành 🥏",
+  "Trái tim nhảy múa khi gặp bác sĩ y khoa, pháp y kì bí 🏥",
+  "Mê lính tráng quân nhân, hình sự đặc vụ siêu ngầu 🪖",
+  "Ảo tưởng ngự kiếm phi thăng, làm vương phi thời cổ đại 🍊",
+  "Thầy giáo nho nhã hoặc streamer mở hồn dở khóc dở cười 🏠",
 ];
 
 export default function AIExamModal({
   isOpen,
   onClose,
-  genresCaiNghien,
+  genres,
   records,
   onAddRecord,
-  onDeleteRecord
+  onDeleteRecord,
 }: AIExamModalProps) {
   const [activeTab, setActiveTab] = useState<0 | 1>(0); // 0: Form, 1: Record Ledger
 
   // Form states
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)');
-  const [selectedGenre, setSelectedGenre] = useState('');
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)");
+  const [selectedGenre, setSelectedGenre] = useState("");
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
 
   // Search/Filter for saved illness records
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [expandedRecordIds, setExpandedRecordIds] = useState<number[]>([]);
 
   // Default set first available genre as default form category
   useEffect(() => {
-    if (genresCaiNghien.length > 0 && !selectedGenre) {
-      setSelectedGenre(genresCaiNghien[0].name);
+    if (genres.length > 0 && !selectedGenre) {
+      setSelectedGenre(genres[0].name);
     }
-  }, [genresCaiNghien]);
+  }, [genres]);
 
   const handleQuickFill = (presetIndex: number) => {
     const preset = QUICK_PRESETS[presetIndex];
@@ -84,34 +104,38 @@ export default function AIExamModal({
     setAge(preset.age);
     setNote(preset.note);
     setSelectedSymptoms(preset.symptoms);
-    
+
     // Attempt to map preset genre to available genres
-    const matchedGenre = genresCaiNghien.find(
-      g => g.name.toLowerCase() === preset.genre.toLowerCase() || g.name.includes(preset.genre)
+    const matchedGenre = genres.find(
+      (g) =>
+        g.name.toLowerCase() === preset.genre.toLowerCase() ||
+        g.name.includes(preset.genre),
     );
     if (matchedGenre) {
       setSelectedGenre(matchedGenre.name);
-    } else if (genresCaiNghien.length > 0) {
-      setSelectedGenre(genresCaiNghien[0].name);
+    } else if (genres.length > 0) {
+      setSelectedGenre(genres[0].name);
     }
   };
 
   const handleSymptomToggle = (symptom: string) => {
     if (selectedSymptoms.includes(symptom)) {
-      setSelectedSymptoms(prev => prev.filter(s => s !== symptom));
+      setSelectedSymptoms((prev) => prev.filter((s) => s !== symptom));
     } else {
-      setSelectedSymptoms(prev => [...prev, symptom]);
+      setSelectedSymptoms((prev) => [...prev, symptom]);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert('⚠️ Thân chủ vui lòng điền Họ tên hoặc Biệt danh hoang tưởng nhé!');
+      alert("⚠️ Thân chủ vui lòng điền Họ tên hoặc Biệt danh hoang tưởng nhé!");
       return;
     }
     if (!selectedGenre) {
-      alert('⚠️ Vui lòng chọn Khoa điều trị để Giáo sư Cố Thị phân bổ phòng họp!');
+      alert(
+        "⚠️ Vui lòng chọn Khoa điều trị để Giáo sư Cố Thị phân bổ phòng họp!",
+      );
       return;
     }
 
@@ -119,18 +143,19 @@ export default function AIExamModal({
       name: name.trim(),
       age: age,
       genre: selectedGenre,
-      note: note.trim() || 'Thân chủ ngoan hiền chưa viết thêm lời trăn trối nào.',
+      note:
+        note.trim() || "Thân chủ ngoan hiền chưa viết thêm lời trăn trối nào.",
       symptoms: selectedSymptoms,
-      zone: 'cai-nghien'
+      zone: "cai-nghien",
     });
 
     // Reset Form
-    setName('');
-    setAge('🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)');
-    setNote('');
+    setName("");
+    setAge("🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)");
+    setNote("");
     setSelectedSymptoms([]);
-    if (genresCaiNghien.length > 0) {
-      setSelectedGenre(genresCaiNghien[0].name);
+    if (genres.length > 0) {
+      setSelectedGenre(genres[0].name);
     }
 
     // Switch to Ledger view tab
@@ -138,19 +163,20 @@ export default function AIExamModal({
   };
 
   const toggleRecordExpand = (recordId: number) => {
-    setExpandedRecordIds(prev => 
-      prev.includes(recordId) 
-        ? prev.filter(id => id !== recordId) 
-        : [...prev, recordId]
+    setExpandedRecordIds((prev) =>
+      prev.includes(recordId)
+        ? prev.filter((id) => id !== recordId)
+        : [...prev, recordId],
     );
   };
 
   // Only display records belonging to "cai-nghien"
-  const filteredRecords = records.filter(r => {
-    const isCaiNghien = r.zone === 'cai-nghien';
-    const matchesSearch = r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.genre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.note.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredRecords = records.filter((r) => {
+    const isCaiNghien = r.zone === "cai-nghien";
+    const matchesSearch =
+      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.genre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.note.toLowerCase().includes(searchQuery.toLowerCase());
     return isCaiNghien && matchesSearch;
   });
 
@@ -178,9 +204,15 @@ export default function AIExamModal({
             id="ai-exam-modal-container"
           >
             {/* Header section with Plum themes styling */}
-            <div className="p-6 pb-4 border-b border-[#3E1444]/60 flex items-start justify-between bg-[#050108]/40" id="ai-exam-header">
+            <div
+              className="p-6 pb-4 border-b border-[#3E1444]/60 flex items-start justify-between bg-[#050108]/40"
+              id="ai-exam-header"
+            >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-[#2A1137] border border-[#3E1444] rounded-2xl flex items-center justify-center shadow-inner" id="ai-exam-icon-box">
+                <div
+                  className="w-12 h-12 bg-[#2A1137] border border-[#3E1444] rounded-2xl flex items-center justify-center shadow-inner"
+                  id="ai-exam-icon-box"
+                >
                   <ClipboardList className="w-6 h-6 text-[#E11D48]" />
                 </div>
                 <div>
@@ -203,13 +235,16 @@ export default function AIExamModal({
             </div>
 
             {/* Custom Tab Navigation */}
-            <div className="flex bg-[#050108]/60 border-b border-[#3E1444]/40 p-1 gap-1" id="ai-exam-tabs">
+            <div
+              className="flex bg-[#050108]/60 border-b border-[#3E1444]/40 p-1 gap-1"
+              id="ai-exam-tabs"
+            >
               <button
                 onClick={() => setActiveTab(0)}
                 className={`flex-1 py-3 text-xs font-bold font-comfortaa rounded-2xl transition duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === 0
-                    ? 'bg-gradient-to-r from-[#E11D48] to-[#910F2B] text-white shadow-md font-extrabold border border-[#E11D48]/30'
-                    : 'text-[#FDA4AF]/60 hover:text-[#FDA4AF] hover:bg-[#2A1137]/30'
+                    ? "bg-gradient-to-r from-[#E11D48] to-[#910F2B] text-white shadow-md font-extrabold border border-[#E11D48]/30"
+                    : "text-[#FDA4AF]/60 hover:text-[#FDA4AF] hover:bg-[#2A1137]/30"
                 }`}
                 id="ai-exam-tab-register"
               >
@@ -219,8 +254,8 @@ export default function AIExamModal({
                 onClick={() => setActiveTab(1)}
                 className={`flex-1 py-3 text-xs font-bold font-comfortaa rounded-2xl transition duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === 1
-                    ? 'bg-gradient-to-r from-[#E11D48] to-[#910F2B] text-white shadow-md font-extrabold border border-[#E11D48]/30'
-                    : 'text-[#FDA4AF]/60 hover:text-[#FDA4AF] hover:bg-[#2A1137]/30'
+                    ? "bg-gradient-to-r from-[#E11D48] to-[#910F2B] text-white shadow-md font-extrabold border border-[#E11D48]/30"
+                    : "text-[#FDA4AF]/60 hover:text-[#FDA4AF] hover:bg-[#2A1137]/30"
                 }`}
                 id="ai-exam-tab-records"
               >
@@ -229,16 +264,21 @@ export default function AIExamModal({
             </div>
 
             {/* Content area */}
-            <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6 scrollbar-thin scrollbar-thumb-[#3E1444] bg-[#190924]" id="ai-exam-scroll-area">
-              
+            <div
+              className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6 scrollbar-thin scrollbar-thumb-[#3E1444] bg-[#190924]"
+              id="ai-exam-scroll-area"
+            >
               {/* TAB 0: CREATE NEW LEDGER PATIENT FILE */}
               {activeTab === 0 && (
                 <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                  
                   {/* Quick Preset Register block */}
-                  <div className="bg-[#050108]/50 border border-[#3E1444]/60 p-4 rounded-3xl" id="ai-exam-presets">
+                  <div
+                    className="bg-[#050108]/50 border border-[#3E1444]/60 p-4 rounded-3xl"
+                    id="ai-exam-presets"
+                  >
                     <h3 className="text-[#FDA4AF] text-center text-xs font-extrabold tracking-widest font-comfortaa mb-3 flex items-center justify-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#EAB308]" /> ⚡ MẪU ĐĂNG KÝ TRẠI CAI NGHIỆN NHANH
+                      <Sparkles className="w-3.5 h-3.5 text-[#EAB308]" /> ⚡ MẪU
+                      ĐĂNG KÝ TRẠI CAI NGHIỆN NHANH
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       {QUICK_PRESETS.map((p, idx) => (
@@ -248,8 +288,12 @@ export default function AIExamModal({
                           onClick={() => handleQuickFill(idx)}
                           className="bg-[#0E0314] hover:bg-[#2A1137] border border-dashed border-[#3E1444] hover:border-[#E11D48]/75 rounded-2xl py-3 px-4 text-[11px] font-bold text-slate-200 hover:text-white transition duration-300 active:scale-95 text-center flex flex-col items-center justify-center gap-1 cursor-pointer"
                         >
-                          <span className="text-white/90 truncate max-w-full">{p.title}</span>
-                          <span className="text-[9px] text-[#FDA4AF]/70 font-normal italic truncate max-w-full">Click để nhập mẫu</span>
+                          <span className="text-white/90 truncate max-w-full">
+                            {p.title}
+                          </span>
+                          <span className="text-[9px] text-[#FDA4AF]/70 font-normal italic truncate max-w-full">
+                            Click để nhập mẫu
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -257,7 +301,6 @@ export default function AIExamModal({
 
                   {/* Form fields component */}
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    
                     {/* Step 1 Badge and Input / Dropdowns */}
                     <div className="space-y-4">
                       <div className="flex items-center">
@@ -278,7 +321,7 @@ export default function AIExamModal({
                             <input
                               type="text"
                               value={name}
-                              onChange={e => setName(e.target.value)}
+                              onChange={(e) => setName(e.target.value)}
                               placeholder="Ví dụ: Người Đẹp Hoang Tưởng..."
                               className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/30 font-comfortaa transition-all focus:ring-1 focus:ring-[#E11D48]/30"
                               required
@@ -296,7 +339,7 @@ export default function AIExamModal({
                             </span>
                             <select
                               value={age}
-                              onChange={e => setAge(e.target.value)}
+                              onChange={(e) => setAge(e.target.value)}
                               className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-slate-200 transition-all cursor-pointer font-sans"
                             >
                               <option value="🔞 Hai Mươi Mập Mờ (Từ 18 đến 25)">
@@ -335,10 +378,10 @@ export default function AIExamModal({
                           </span>
                           <select
                             value={selectedGenre}
-                            onChange={e => setSelectedGenre(e.target.value)}
+                            onChange={(e) => setSelectedGenre(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white transition-all cursor-pointer font-comfortaa font-bold"
                           >
-                            {genresCaiNghien.map(g => (
+                            {genres.map((g) => (
                               <option key={g.name} value={g.name}>
                                 {g.icon} {g.name}
                               </option>
@@ -354,7 +397,10 @@ export default function AIExamModal({
                         <span className="bg-[#E11D48]/20 text-[#FDA4AF] border border-[#E11D48]/35 px-4 py-1.5 rounded-full text-[10px] font-extrabold tracking-wider font-mono shadow-sm">
                           BƯỚC 3: TRIỆU CHỨNG LÂM SÀNG
                         </span>
-                        <span className="text-[9px] text-[#FDA4AF]/70 italic">(Tích chọn tất cả hoang tưởng hoành hành tâm linh của bạn)</span>
+                        <span className="text-[9px] text-[#FDA4AF]/70 italic">
+                          (Tích chọn tất cả hoang tưởng hoành hành tâm linh của
+                          bạn)
+                        </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -365,8 +411,8 @@ export default function AIExamModal({
                               key={sym}
                               className={`flex items-start gap-3 p-3 rounded-2xl border transition duration-200 cursor-pointer ${
                                 isChecked
-                                  ? 'bg-[#2A1137]/60 border-[#E11D48] text-white shadow-sm'
-                                  : 'bg-[#0E0314] border-[#3E1444]/60 text-slate-200 hover:border-[#E11D48]/30 hover:text-white'
+                                  ? "bg-[#2A1137]/60 border-[#E11D48] text-white shadow-sm"
+                                  : "bg-[#0E0314] border-[#3E1444]/60 text-slate-200 hover:border-[#E11D48]/30 hover:text-white"
                               }`}
                             >
                               <input
@@ -375,7 +421,9 @@ export default function AIExamModal({
                                 onChange={() => handleSymptomToggle(sym)}
                                 className="mt-0.5 accent-[#E11D48] cursor-pointer"
                               />
-                              <span className="select-none leading-relaxed text-[11px] font-sans font-medium">{sym}</span>
+                              <span className="select-none leading-relaxed text-[11px] font-sans font-medium">
+                                {sym}
+                              </span>
                             </label>
                           );
                         })}
@@ -401,7 +449,7 @@ export default function AIExamModal({
                           <textarea
                             rows={3}
                             value={note}
-                            onChange={e => setNote(e.target.value)}
+                            onChange={(e) => setNote(e.target.value)}
                             placeholder="Ghi nhận cụ thể, ví dụ: mê bác sĩ y khoa, thèm cưng chiều vuốt tóc, cuồng tự ngược đau thương..."
                             className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/30 font-sans transition-all resize-none leading-relaxed focus:ring-1 focus:ring-[#E11D48]/30"
                           />
@@ -425,7 +473,6 @@ export default function AIExamModal({
                         ⚡ NỘP ĐƠN NHẬP TRẠI NGAY 🏨
                       </button>
                     </div>
-
                   </form>
                 </div>
               )}
@@ -438,13 +485,13 @@ export default function AIExamModal({
                     <input
                       type="text"
                       value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Tìm kiếm theo họ tên, triệu chứng hoặc khoa chẩn đoán..."
                       className="w-full pl-4 pr-12 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/35 font-comfortaa"
                     />
                     {searchQuery && (
                       <button
-                        onClick={() => setSearchQuery('')}
+                        onClick={() => setSearchQuery("")}
                         className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-[#FDA4AF] hover:text-white"
                       >
                         Xóa
@@ -456,9 +503,16 @@ export default function AIExamModal({
                   {filteredRecords.length === 0 ? (
                     <div className="text-center py-12 bg-[#050108]/30 border border-[#3E1444]/40 rounded-3xl p-5 space-y-2">
                       <div className="text-2xl">📭</div>
-                      <h4 className="text-sm font-bold text-slate-200 font-comfortaa">Chưa có hồ sơ cai nghiện nào</h4>
+                      <h4 className="text-sm font-bold text-slate-200 font-comfortaa">
+                        Chưa có hồ sơ cai nghiện nào
+                      </h4>
                       <p className="text-xs text-[#FDA4AF]/60 max-w-sm mx-auto">
-                        Hãy chuyển qua thẻ <span className="text-[#FDA4AF] font-bold">📋 Lập Hồ Sơ Mới</span> để tự ghi nhận bệnh án hoang tưởng đầu tiên của bạn tại Trại Cai Nghiện Cố Thị nhé!
+                        Hãy chuyển qua thẻ{" "}
+                        <span className="text-[#FDA4AF] font-bold">
+                          📋 Lập Hồ Sơ Mới
+                        </span>{" "}
+                        để tự ghi nhận bệnh án hoang tưởng đầu tiên của bạn tại
+                        Trại Cai Nghiện Cố Thị nhé!
                       </p>
                     </div>
                   ) : (
@@ -484,11 +538,15 @@ export default function AIExamModal({
                                     {r.genre}
                                   </span>
                                 </div>
-                                <span className="text-[9px] text-[#FDA4AF]/50 block mt-1">Độ tuổi sinh lực: {r.age}</span>
+                                <span className="text-[9px] text-[#FDA4AF]/50 block mt-1">
+                                  Độ tuổi sinh lực: {r.age}
+                                </span>
                               </div>
 
                               <div className="flex items-center gap-3.5 flex-shrink-0">
-                                <span className="text-[10px] text-slate-400 font-mono">{r.date || 'Hôm nay'}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {r.date || "Hôm nay"}
+                                </span>
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -518,7 +576,10 @@ export default function AIExamModal({
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                                       {r.symptoms.map((s, idx) => (
-                                        <div key={idx} className="bg-[#2A1137]/35 border border-[#3E1444]/40 rounded-xl p-2 text-[10px] text-slate-300">
+                                        <div
+                                          key={idx}
+                                          className="bg-[#2A1137]/35 border border-[#3E1444]/40 rounded-xl p-2 text-[10px] text-slate-300"
+                                        >
                                           • {s}
                                         </div>
                                       ))}
@@ -543,11 +604,13 @@ export default function AIExamModal({
                   )}
                 </div>
               )}
-
             </div>
 
             {/* Sticky footer close element */}
-            <div className="p-4 border-t border-[#3E1444]/60 bg-[#050108]/50 flex justify-end gap-2" id="ai-exam-footer-sticky">
+            <div
+              className="p-4 border-t border-[#3E1444]/60 bg-[#050108]/50 flex justify-end gap-2"
+              id="ai-exam-footer-sticky"
+            >
               <button
                 onClick={onClose}
                 className="bg-[#2A1137]/65 hover:bg-[#E11D48] text-white hover:text-white border border-[#3E1444] hover:border-transparent text-xs font-bold font-comfortaa px-6 py-2.5 rounded-2xl transition duration-200 cursor-pointer"
@@ -556,7 +619,6 @@ export default function AIExamModal({
                 ✕ Đóng cửa sổ chẩn trị
               </button>
             </div>
-
           </motion.div>
         </div>
       )}

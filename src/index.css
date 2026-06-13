@@ -197,5 +197,18 @@
   animation: rippleEffect 0.75s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
 }
 
+/* Utilities */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+
+
 
 

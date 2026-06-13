@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { ExternalLink, Edit2, Lock, Unlock, Eye, EyeOff } from 'lucide-react';
-import { Prompt } from '../types';
-import VoteHeartWidget from './VoteHeartWidget';
+import React, { useState } from "react";
+import { motion } from "motion/react";
+import { ExternalLink, Edit2, Lock, Unlock, Eye, EyeOff } from "lucide-react";
+import { Prompt } from "../types";
+import VoteHeartWidget from "./VoteHeartWidget";
 
 interface PromptCardProps {
   key?: React.Key;
@@ -11,34 +11,41 @@ interface PromptCardProps {
   onEdit: (prompt: Prompt) => void;
   onTagClick: (tag: string) => void;
   index?: number;
-  onPasswordFail?: (triggerAlarm: boolean, customMedia?: string, customSound?: string) => void;
+  onPasswordFail?: (
+    triggerAlarm: boolean,
+    customMedia?: string,
+    customSound?: string,
+  ) => void;
   onOpenPrompt?: (prompt: Prompt) => void;
   passwordFailLimit?: number;
-  viewMode?: 'grid' | 'list';
+  viewMode?: "grid" | "list";
   votes?: number;
   onVote?: (id: string) => void;
 }
 
-export default function PromptCard({ 
-  prompt, 
-  isAdmin, 
-  onEdit, 
-  onTagClick, 
-  index = 0, 
-  onPasswordFail, 
-  onOpenPrompt, 
+export default function PromptCard({
+  prompt,
+  isAdmin,
+  onEdit,
+  onTagClick,
+  index = 0,
+  onPasswordFail,
+  onOpenPrompt,
   passwordFailLimit = 5,
-  viewMode = 'grid',
+  viewMode = "grid",
   votes = 0,
-  onVote
+  onVote,
 }: PromptCardProps) {
-  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState("");
   const [showCardPassword, setShowCardPassword] = useState(false);
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState("");
   const [localFailCount, setLocalFailCount] = useState(0);
-  const [ripples, setRipples] = useState<{ id: number; x: number; y: number; size: number }[]>([]);
+  const [showSecondaryHintPopup, setShowSecondaryHintPopup] = useState(false);
+  const [ripples, setRipples] = useState<
+    { id: number; x: number; y: number; size: number }[]
+  >([]);
 
   const hasPassword = !!prompt.password;
 
@@ -57,26 +64,35 @@ export default function PromptCard({
     if (passwordInput === prompt.password) {
       setUnlocked(true);
       setChallengeOpen(false);
-      setErrorMsg('');
+      setShowSecondaryHintPopup(false);
+      setErrorMsg("");
       setLocalFailCount(0);
       if (onOpenPrompt) {
         onOpenPrompt(prompt);
       }
       // Dispatch colorful confetti celebratory event
-      window.dispatchEvent(new CustomEvent('celebrate-confetti'));
+      window.dispatchEvent(new CustomEvent("celebrate-confetti"));
       // Open link in a new tab
-      window.open(prompt.url, '_blank', 'noreferrer,noopener');
+      window.open(prompt.url, "_blank", "noreferrer,noopener");
     } else {
       const nextFail = localFailCount + 1;
-      const limit = prompt.passwordFailLimit !== undefined ? prompt.passwordFailLimit : passwordFailLimit;
-      if (nextFail >= limit) {
-        setLocalFailCount(0);
-        setErrorMsg('');
+      setLocalFailCount(nextFail);
+      const limit =
+        prompt.passwordFailLimit !== undefined
+          ? prompt.passwordFailLimit
+          : passwordFailLimit;
+
+      if (nextFail % limit === 0) {
+        // Trigger troll alarm on exact multiples of limit
         if (onPasswordFail) {
-          onPasswordFail(true, prompt.passwordFailGifUrl, prompt.passwordFailSoundUrl);
+          onPasswordFail(true, prompt.passwordFailGifUrl);
         }
+        // Show secondary hint popup if configured
+        if (prompt.passwordFailSecondaryHint) {
+          setShowSecondaryHintPopup(true);
+        }
+        setErrorMsg(`🚨 Cảnh báo: Nhập sai ${nextFail} lần!`);
       } else {
-        setLocalFailCount(nextFail);
         setErrorMsg(`❌ Nhập sai: ${nextFail}/${limit} lần!`);
         if (onPasswordFail) {
           onPasswordFail(false);
@@ -89,10 +105,10 @@ export default function PromptCard({
     const target = e.target as HTMLElement;
     // Prevent ripple if interacting with elements like buttons, generic anchor links or tags
     if (
-      target.closest('a') || 
-      target.closest('button') || 
-      target.closest('input') || 
-      (target.closest('.cursor-pointer') && target.tagName === 'SPAN')
+      target.closest("a") ||
+      target.closest("button") ||
+      target.closest("input") ||
+      (target.closest(".cursor-pointer") && target.tagName === "SPAN")
     ) {
       return;
     }
@@ -116,7 +132,7 @@ export default function PromptCard({
     setRipples((prev) => prev.filter((r) => r.id !== id));
   };
 
-  if (viewMode === 'list') {
+  if (viewMode === "list") {
     return (
       <motion.div
         layout
@@ -124,11 +140,11 @@ export default function PromptCard({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
         whileHover={{ y: -1 }}
-        transition={{ 
-          type: "spring", 
-          stiffness: 260, 
+        transition={{
+          type: "spring",
+          stiffness: 260,
           damping: 20,
-          delay: Math.min(index * 0.02, 0.3)
+          delay: Math.min(index * 0.02, 0.3),
         }}
         onClick={handleCardClick}
         className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-4 shadow-sm hover:border-[var(--zone-primary)] transition-colors duration-250 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer"
@@ -151,14 +167,21 @@ export default function PromptCard({
         {/* Cột chính: Icon + Tiêu đề + Phân khoa */}
         <div className="flex items-start gap-3 flex-1 min-w-0 relative z-10 pointer-events-none">
           <span className="text-2xl mt-0.5 shrink-0 select-none bg-[var(--zone-primary-lighter)] p-2 rounded-xl border border-[var(--zone-border)]/40">
-            {prompt.icon || '📝'}
+            {prompt.icon || "📝"}
           </span>
           <div className="min-w-0 pr-4 pointer-events-auto">
             <h3 className="text-sm font-bold text-[var(--zone-primary)] flex items-center gap-1.5 leading-snug truncate">
               <span>{prompt.title}</span>
               {hasPassword && (
-                <span className="text-amber-500 animate-pulse shrink-0" title="Có mật khẩu bảo vệ">
-                  {unlocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                <span
+                  className="text-amber-500 animate-pulse shrink-0"
+                  title="Có mật khẩu bảo vệ"
+                >
+                  {unlocked ? (
+                    <Unlock className="w-3.5 h-3.5" />
+                  ) : (
+                    <Lock className="w-3.5 h-3.5" />
+                  )}
                 </span>
               )}
             </h3>
@@ -200,10 +223,10 @@ export default function PromptCard({
         <div className="flex items-center gap-2 shrink-0 justify-end mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-[var(--zone-border)] relative z-10">
           {onVote && (
             <div className="shrink-0 mr-1 scale-90 md:scale-95">
-              <VoteHeartWidget 
-                characterId={prompt.id.toString()} 
-                votes={votes} 
-                onVote={onVote} 
+              <VoteHeartWidget
+                characterId={prompt.id.toString()}
+                votes={votes}
+                onVote={onVote}
               />
             </div>
           )}
@@ -236,13 +259,17 @@ export default function PromptCard({
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <Lock className="w-5 h-5 text-amber-500 animate-[bounce_1.5s_infinite] shrink-0" />
               <div className="min-w-0">
-                <h4 className="text-xs font-bold text-slate-100 truncate">Khám bệnh án này cần Mật khẩu</h4>
+                <h4 className="text-xs font-bold text-slate-100 truncate">
+                  Khám bệnh án này cần Mật khẩu
+                </h4>
                 {prompt.passwordHint && (
-                  <p className="text-[10px] text-amber-400 italic truncate">Gợi ý: {prompt.passwordHint}</p>
+                  <p className="text-[10px] text-amber-400 italic truncate">
+                    Gợi ý: {prompt.passwordHint}
+                  </p>
                 )}
               </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
               <div className="relative w-full sm:w-[150px]">
                 <input
@@ -250,7 +277,7 @@ export default function PromptCard({
                   placeholder="Nhập mã mở..."
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                  onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
                   className="px-2.5 pr-8 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
                 />
                 <button
@@ -259,11 +286,19 @@ export default function PromptCard({
                   className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer p-1 hover:scale-110 active:scale-90"
                   title={showCardPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
-                  {showCardPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  {showCardPassword ? (
+                    <EyeOff className="w-3 h-3" />
+                  ) : (
+                    <Eye className="w-3 h-3" />
+                  )}
                 </button>
               </div>
 
-              {errorMsg && <p className="text-[10px] text-rose-500 truncate max-w-[120px]">{errorMsg}</p>}
+              {errorMsg && (
+                <p className="text-[10px] text-rose-500 truncate max-w-[120px]">
+                  {errorMsg}
+                </p>
+              )}
 
               <div className="flex gap-1.5">
                 <button
@@ -282,6 +317,28 @@ export default function PromptCard({
             </div>
           </div>
         )}
+
+        {showSecondaryHintPopup && prompt.passwordFailSecondaryHint && (
+          <div className="absolute inset-0 bg-slate-950/95 border-2 border-amber-500/80 rounded-2xl p-4 flex flex-col justify-center items-center text-center z-30 shadow-2xl backdrop-blur-md">
+            <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mb-1 border border-amber-500/30">
+              <span className="text-sm animate-bounce">💡</span>
+            </div>
+            <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
+              Gợi ý bổ sung (Sai lần {localFailCount})!
+            </h5>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1 w-full max-w-[280px]">
+              <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
+                "{prompt.passwordFailSecondaryHint}"
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSecondaryHintPopup(false)}
+              className="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-extrabold text-[9px] px-3 py-1 rounded-lg transition-transform cursor-pointer shadow-md uppercase tracking-wider"
+            >
+              Đã hiểu chuyên án, thử lại!
+            </button>
+          </div>
+        )}
       </motion.div>
     );
   }
@@ -292,15 +349,15 @@ export default function PromptCard({
       initial={{ opacity: 0, x: -30, y: 15 }}
       animate={{ opacity: 1, x: 0, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-      whileHover={{ 
+      whileHover={{
         scale: 1.03,
-        boxShadow: "0 25px 50px -12px rgba(42, 52, 57, 0.4)"
+        boxShadow: "0 25px 50px -12px rgba(42, 52, 57, 0.4)",
       }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 260, 
+      transition={{
+        type: "spring",
+        stiffness: 260,
         damping: 20,
-        delay: Math.min(index * 0.05, 0.5) // Max delay of 0.5s to prevent long waits
+        delay: Math.min(index * 0.05, 0.5), // Max delay of 0.5s to prevent long waits
       }}
       onClick={handleCardClick}
       className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-5 shadow-lg hover:border-[var(--zone-primary)] transition-colors duration-300 relative overflow-hidden flex flex-col justify-between cursor-pointer"
@@ -324,20 +381,27 @@ export default function PromptCard({
         <div className="pointer-events-auto relative">
           {onVote && (
             <div className="absolute top-0 right-0 z-20 scale-90 md:scale-95">
-              <VoteHeartWidget 
-                characterId={prompt.id.toString()} 
-                votes={votes} 
-                onVote={onVote} 
+              <VoteHeartWidget
+                characterId={prompt.id.toString()}
+                votes={votes}
+                onVote={onVote}
               />
             </div>
           )}
 
           <h3 className="text-lg font-bold text-[var(--zone-primary)] pr-24 flex items-center gap-1.5 leading-snug">
-            <span>{prompt.icon || '📝'}</span>
+            <span>{prompt.icon || "📝"}</span>
             <span>{prompt.title}</span>
             {hasPassword && (
-              <span className="text-amber-500 animate-pulse ml-1" title="Có mật khẩu bảo vệ">
-                {unlocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              <span
+                className="text-amber-500 animate-pulse ml-1"
+                title="Có mật khẩu bảo vệ"
+              >
+                {unlocked ? (
+                  <Unlock className="w-4 h-4" />
+                ) : (
+                  <Lock className="w-4 h-4" />
+                )}
               </span>
             )}
           </h3>
@@ -351,10 +415,13 @@ export default function PromptCard({
           <div className="mt-3 flex items-center justify-between gap-2">
             {prompt.genre && (
               <span className="bg-[var(--zone-primary-lighter)] text-[var(--zone-primary)] text-xs font-bold px-2.5 py-1 rounded-lg">
-                {prompt.icon || '📁'} {prompt.genre}
+                {prompt.icon || "📁"} {prompt.genre}
               </span>
             )}
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-muted)] bg-slate-500/5 px-2 py-0.5 rounded-md" title="Số lượt xem bệnh án">
+            <span
+              className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-muted)] bg-slate-500/5 px-2 py-0.5 rounded-md"
+              title="Số lượt xem bệnh án"
+            >
               <Eye className="w-3.5 h-3.5 opacity-70" />
               <span>{prompt.viewCount || 0} lượt xem</span>
             </span>
@@ -402,10 +469,14 @@ export default function PromptCard({
       {challengeOpen && (
         <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-sm flex flex-col justify-center items-center p-4 text-center z-20">
           <Lock className="w-8 h-8 text-amber-500 animate-[bounce_1.5s_infinite] mb-2" />
-          <h4 className="text-sm font-bold text-slate-100">Khám bệnh án này cần Mật khẩu</h4>
-          
+          <h4 className="text-sm font-bold text-slate-100">
+            Khám bệnh án này cần Mật khẩu
+          </h4>
+
           {prompt.passwordHint && (
-            <p className="text-xs text-amber-400 mt-1 italic">Gợi ý: {prompt.passwordHint}</p>
+            <p className="text-xs text-amber-400 mt-1 italic">
+              Gợi ý: {prompt.passwordHint}
+            </p>
           )}
 
           <div className="relative w-full max-w-[200px] mt-3">
@@ -414,7 +485,7 @@ export default function PromptCard({
               placeholder="Nhập mã mở khóa..."
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+              onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
               className="px-3 pr-9 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs text-center border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
             />
             <button
@@ -423,7 +494,11 @@ export default function PromptCard({
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer p-1.5 hover:scale-110 active:scale-90"
               title={showCardPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
             >
-              {showCardPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              {showCardPassword ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
 
@@ -443,6 +518,28 @@ export default function PromptCard({
               Hủy
             </button>
           </div>
+        </div>
+      )}
+
+      {showSecondaryHintPopup && prompt.passwordFailSecondaryHint && (
+        <div className="absolute inset-0 bg-slate-950/95 border-2 border-amber-500/80 rounded-2xl p-4 flex flex-col justify-center items-center text-center z-30 shadow-2xl backdrop-blur-md">
+          <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mb-1 border border-amber-500/30">
+            <span className="text-sm animate-bounce">💡</span>
+          </div>
+          <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
+            Gợi ý bổ sung (Sai lần {localFailCount})!
+          </h5>
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1.5 w-full max-w-[200px]">
+            <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
+              "{prompt.passwordFailSecondaryHint}"
+            </p>
+          </div>
+          <button
+            onClick={() => setShowSecondaryHintPopup(false)}
+            className="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-extrabold text-[9px] px-3 py-1 rounded-lg transition-transform cursor-pointer shadow-md uppercase tracking-wider"
+          >
+            Đã hiểu chuyên án, thử lại!
+          </button>
         </div>
       )}
     </motion.div>

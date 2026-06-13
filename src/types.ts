@@ -21,6 +21,7 @@ export interface Prompt {
   passwordFailLimit?: number;
   passwordFailGifUrl?: string;
   passwordFailSoundUrl?: string;
+  passwordFailSecondaryHint?: string;
 }
 
 export interface RegRecord {
