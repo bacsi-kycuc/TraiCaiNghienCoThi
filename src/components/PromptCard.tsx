@@ -196,10 +196,10 @@ export default function PromptCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleOpenPrompt}
-            className="inline-flex items-center gap-1 bg-[var(--zone-primary)] hover:bg-[var(--zone-primary-light)] text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm transition hover:scale-105"
+            className="inline-flex items-center gap-1 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl font-extrabold text-xs shadow-md transition hover:scale-105 border border-violet-500/20"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            Vào Prompt
+            Bé đến đây!
           </a>
 
           {isAdmin && (
@@ -355,10 +355,10 @@ export default function PromptCard({
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleOpenPrompt}
-          className="inline-flex items-center gap-1.5 bg-[var(--zone-primary)] hover:bg-[var(--zone-primary-light)] text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm transition hover:scale-105"
+          className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-extrabold text-xs shadow-md transition hover:scale-105 border border-violet-500/20"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          Kích hoạt Prompt
+          Bé đến đây!
         </a>
 
         {isAdmin && (
