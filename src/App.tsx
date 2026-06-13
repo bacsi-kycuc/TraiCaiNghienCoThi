@@ -72,6 +72,25 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // --- Deletion Confirmation Dialog ---
+  const [customConfirm, setCustomConfirm] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    cancelText: string;
+    onConfirm: () => void;
+    icon: string;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    confirmText: '',
+    cancelText: '',
+    onConfirm: () => {},
+    icon: '⚠️'
+  });
+
   // --- Modals payload tracking ---
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [toastMessage, setToastMessage] = useState('');
@@ -250,6 +269,10 @@ export default function App() {
   useEffect(() => {
     if (audioRef.current) {
       const isYT = settings.musicUrl && (settings.musicUrl.includes('youtube.com') || settings.musicUrl.includes('youtu.be'));
+      
+      // Assist the native browser autoplay policy
+      audioRef.current.autoplay = true;
+
       if (settings.musicData) {
         audioRef.current.src = settings.musicData;
       } else if (settings.musicUrl && !isYT) {
@@ -259,6 +282,19 @@ export default function App() {
       } else {
         // Fallback to default
         audioRef.current.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
+      }
+
+      // Try autoplaying immediately with strict try-catch handling
+      if (!isYT) {
+        const attemptPlay = async () => {
+          try {
+            await audioRef.current?.play();
+            console.log("🔊 Tự động phát nhạc nền thành công!");
+          } catch (error) {
+            console.warn("⚠️ Tự động phát nhạc bị trình duyệt giới hạn (Cần người dùng nhấp chuột tương tác trước):", error);
+          }
+        };
+        attemptPlay();
       }
     }
   }, [settings.musicData, settings.musicUrl]);
@@ -323,7 +359,7 @@ export default function App() {
         
         // Enter console view directly as admin
         setCurrentScreen('app');
-        setToastMessage('✅ Chào mừng quản trị viên! Chế độ chỉnh sửa đã kích hoạt.');
+        setToastMessage('✅ Chào mừng Viện Trưởng!');
       } else {
         alert('❌ Khẩu lệnh hoặc ID sai lệch! Hệ thống bảo mật tối cao đã từ chối truy cập.');
       }
@@ -343,7 +379,7 @@ export default function App() {
 
         alert('🎉 Đằng sau mật viện... Bạn đã được cấp đặc quyền Chánh văn phòng Admin Viện Tâm Thần Cố Thị!');
         setCurrentScreen('app');
-        setToastMessage('✅ Chào mừng quản trị viên! Chế độ chỉnh sửa đã kích hoạt.');
+        setToastMessage('✅ Chào mừng Viện Trưởng!');
       } else {
         alert('❌ Khẩu lệnh hoặc ID sai lệch!');
       }
@@ -452,13 +488,24 @@ export default function App() {
   };
 
   const handleDeleteGenre = async (name: string, targetZone: 'hospital' | 'cai-nghien') => {
-    const docId = `${targetZone}_${name}`.replace(/[^a-zA-Z0-9_\-]/g, '_');
-    try {
-      await deleteDoc(doc(db, 'genres', docId));
-      setToastMessage(`🗑️ Đã bãi bỏ chuyên khoa: ${name}`);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `genres/${docId}`);
-    }
+    setCustomConfirm({
+      isOpen: true,
+      title: 'Bãi bỏ Chuyên khoa?',
+      description: `Hành động này mang tính phá hủy dữ liệu cực kỳ cao! Bạn có chắc chắn muốn bãi bỏ chuyên khoa "${name}" ra khỏi hệ thống phân khu quản lý không?`,
+      confirmText: '💀 Bãi bỏ ngay',
+      cancelText: 'Hủy bỏ',
+      icon: '🗑️',
+      onConfirm: async () => {
+        const docId = `${targetZone}_${name}`.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        try {
+          await deleteDoc(doc(db, 'genres', docId));
+          setToastMessage(`🗑️ Đã bãi bỏ chuyên khoa: ${name}`);
+        } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `genres/${docId}`);
+        }
+        setCustomConfirm(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleSavePrompt = async (payload: Omit<Prompt, 'id'> & { id?: number }, targetZone: 'hospital' | 'cai-nghien') => {
@@ -486,16 +533,26 @@ export default function App() {
   };
 
   const handleDeletePrompt = async (id: number, targetZone: 'hospital' | 'cai-nghien') => {
-    if (!window.confirm('🗑️ Bạn có chắc muốn khép lại bệnh án này không?')) return;
-    const docId = `prompt_${id}`;
-    try {
-      await deleteDoc(doc(db, 'prompts', docId));
-      setShowPromptModal(false);
-      setEditingPrompt(null);
-      setToastMessage('🗑️ Bệnh án đã được thiêu hủy thành công.');
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `prompts/${docId}`);
-    }
+    setCustomConfirm({
+      isOpen: true,
+      title: 'Thiêu hủy Bệnh án?',
+      description: 'Hồ sơ bệnh án này sẽ bị thiêu hủy vĩnh viễn khỏi toàn bộ hệ thống lưu trữ của trạm và không thể khôi phục. Bạn có chắc muốn thiêu hủy không?',
+      confirmText: '🔥 Thiêu hủy',
+      cancelText: 'Hủy bỏ',
+      icon: '☠️',
+      onConfirm: async () => {
+        const docId = `prompt_${id}`;
+        try {
+          await deleteDoc(doc(db, 'prompts', docId));
+          setShowPromptModal(false);
+          setEditingPrompt(null);
+          setToastMessage('🗑️ Bệnh án đã được thiêu hủy thành công.');
+        } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `prompts/${docId}`);
+        }
+        setCustomConfirm(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleAddRecord = async (record: Omit<RegRecord, 'id' | 'date'>) => {
@@ -515,13 +572,24 @@ export default function App() {
   };
 
   const handleDeleteRecord = async (id: number) => {
-    const docId = `record_${id}`;
-    try {
-      await deleteDoc(doc(db, 'records', docId));
-      setToastMessage('🗑️ Đã dọn dẹp hồ sơ bệnh án cũ.');
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `records/${docId}`);
-    }
+    setCustomConfirm({
+      isOpen: true,
+      title: 'Xóa Sổ bệnh cũ?',
+      description: 'Dòng chẩn trị này sẽ bị xóa bỏ và loại trừ hoàn toàn khỏi sổ lâm sàng lưu trữ. Bạn có chắc chắn muốn dọn sạch không?',
+      confirmText: '🗑️ Dọn sạch',
+      cancelText: 'Hủy bỏ',
+      icon: '📂',
+      onConfirm: async () => {
+        const docId = `record_${id}`;
+        try {
+          await deleteDoc(doc(db, 'records', docId));
+          setToastMessage('🗑️ Đã dọn dẹp hồ sơ bệnh án cũ.');
+        } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `records/${docId}`);
+        }
+        setCustomConfirm(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   // Render variables triggers
@@ -750,6 +818,7 @@ export default function App() {
           }
         }} 
         loop 
+        autoPlay
       />
 
       {/* Dynamic Background Audio Player widget inside Console */}
@@ -888,6 +957,35 @@ export default function App() {
                 className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 rounded-xl text-xs cursor-pointer shadow"
               >
                 🚪 Đăng Xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5.5. Deep custom safety confirmation dialog for destructive actions */}
+      {customConfirm.isOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[100000] p-4 transition-all duration-300">
+          <div className="bg-slate-900 border border-slate-750 rounded-3xl p-6 max-w-[365px] text-center shadow-2xl space-y-4 animate-[in_0.18s_ease-out] border-t-4 border-t-rose-600">
+            <div className="text-4xl animate-bounce">{customConfirm.icon}</div>
+            <h2 className="font-comfortaa text-md font-extrabold text-slate-100 uppercase tracking-widest leading-snug">
+              {customConfirm.title}
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+              {customConfirm.description}
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => setCustomConfirm(prev => ({ ...prev, isOpen: false }))}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs cursor-pointer transition border border-slate-700"
+              >
+                {customConfirm.cancelText}
+              </button>
+              <button 
+                onClick={customConfirm.onConfirm}
+                className="flex-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-200 font-extrabold py-2.5 rounded-xl text-xs cursor-pointer transition shadow"
+              >
+                {customConfirm.confirmText}
               </button>
             </div>
           </div>

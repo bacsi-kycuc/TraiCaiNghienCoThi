@@ -123,3 +123,30 @@
   padding-left: 100%;
 }
 
+/* Custom Atmospheric Scrollbar design matching Smoky Altar theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #150213; /* Deep Purple Black background */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4F3841; /* Smoky Altar */
+  border-radius: 9999px;
+  border: 1px solid #150213;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #957F89; /* Worn Velvet */
+}
+
+/* Scrollbar styling for firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4F3841 #150213;
+}
+
+
