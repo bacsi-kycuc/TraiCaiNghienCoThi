@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ToggleLeft, ToggleRight, Sun, Moon, LogOut, Settings as SettingsIcon, Plus, User, LogIn, Key, Eye, EyeOff } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Sun, Moon, LogOut, Settings as SettingsIcon, Plus, User, LogIn, Key, Eye, EyeOff, LayoutGrid, List } from 'lucide-react';
 
 // Firebase Firestore imports
 import { db, handleFirestoreError, OperationType } from './firebase';
-import { collection, doc, onSnapshot, setDoc, deleteDoc, getDocFromServer } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, deleteDoc, getDocFromServer, increment } from 'firebase/firestore';
 
 // Subcomponents helper importations
 import WelcomeScreen from './components/WelcomeScreen';
@@ -31,6 +31,14 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'welcome' | 'app'>('welcome');
   const [currentZone, setCurrentZone] = useState<'hospital' | 'cai-nghien'>('cai-nghien');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    return (localStorage.getItem('viewMode_co_thi') as 'grid' | 'list') || 'grid';
+  });
+
+  const handleSetViewMode = (mode: 'grid' | 'list') => {
+    setViewMode(mode);
+    localStorage.setItem('viewMode_co_thi', mode);
+  };
 
   // --- Auth states ---
   const [isAdmin, setIsAdmin] = useState(false);
@@ -133,8 +141,7 @@ export default function App() {
     try {
       const docId = `prompt_${prompt.id}`;
       const promptDocRef = doc(db, 'prompts', docId);
-      const currentViews = prompt.viewCount || 0;
-      await setDoc(promptDocRef, { viewCount: currentViews + 1 }, { merge: true });
+      await setDoc(promptDocRef, { viewCount: increment(1) }, { merge: true });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `prompts/prompt_${prompt.id}`);
     }
@@ -787,15 +794,35 @@ export default function App() {
               {/* Main Contents catalog list */}
               <main className="flex flex-col gap-5">
                 
-                {/* Search query box */}
-                <div className="p-4 bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl shadow-lg backdrop-blur-md text-[var(--text)]">
-                  <input 
-                    type="text" 
-                    placeholder="Tìm kiếm triệu chứng hoặc điều dưỡng..."
-                    value={searchFilter}
-                    onChange={(e) => setSearchFilter(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[var(--bg2)]/80 text-[var(--text)] border-2 border-[var(--zone-border)] rounded-2xl outline-none focus:border-[var(--zone-primary)] text-sm transition"
-                  />
+                {/* Search query box & view mode controls */}
+                <div className="flex flex-col sm:flex-row gap-4 p-4 bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl shadow-lg backdrop-blur-md text-[var(--text)] items-center">
+                  <div className="flex-1 w-full">
+                    <input 
+                      type="text" 
+                      placeholder="Tìm kiếm triệu chứng hoặc điều dưỡng..."
+                      value={searchFilter}
+                      onChange={(e) => setSearchFilter(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-[var(--bg2)]/80 text-[var(--text)] border-2 border-[var(--zone-border)] rounded-2xl outline-none focus:border-[var(--zone-primary)] text-sm transition"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0 bg-[var(--bg2)]/60 p-1 rounded-2xl border border-[var(--zone-border)]/45 w-full sm:w-auto justify-center select-none">
+                    <button
+                      type="button"
+                      onClick={() => handleSetViewMode('grid')}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer hover:scale-105 active:scale-95 ${viewMode === 'grid' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-[var(--text-muted)] hover:text-[var(--zone-primary)]'}`}
+                      title="Hiển thị dạng lưới thẻ"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" /> Thẻ Lưới
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetViewMode('list')}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer hover:scale-105 active:scale-95 ${viewMode === 'list' ? 'bg-[var(--zone-primary)] text-white shadow' : 'text-[var(--text-muted)] hover:text-[var(--zone-primary)]'}`}
+                      title="Hiển thị dạng danh sách hàng dọc"
+                    >
+                      <List className="w-3.5 h-3.5" /> Danh Sách
+                    </button>
+                  </div>
                 </div>
 
                 {/* Tag Clouds catalog */}
@@ -822,8 +849,11 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Cards grid */}
-                <motion.div layout className="prompt-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {/* Cards grid / List container */}
+                <motion.div 
+                  layout 
+                  className={viewMode === 'list' ? 'prompt-grid flex flex-col gap-4' : 'prompt-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5'}
+                >
                   <AnimatePresence mode="popLayout">
                     {filteredPrompts.length === 0 ? (
                       <motion.div 
@@ -850,6 +880,7 @@ export default function App() {
                           onPasswordFail={handlePasswordFail}
                           onOpenPrompt={handleOpenPrompt}
                           passwordFailLimit={settings.passwordFailLimit || 5}
+                          viewMode={viewMode}
                         />
                       ))
                     )}
@@ -936,7 +967,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-400 transition cursor-pointer"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-400 transition cursor-pointer p-1.5 hover:scale-110 active:scale-90"
                     title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                     id="toggle-admin-password-visibility"
                   >

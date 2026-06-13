@@ -13,6 +13,7 @@ interface PromptCardProps {
   onPasswordFail?: (triggerAlarm: boolean) => void;
   onOpenPrompt?: (prompt: Prompt) => void;
   passwordFailLimit?: number;
+  viewMode?: 'grid' | 'list';
 }
 
 export default function PromptCard({ 
@@ -23,7 +24,8 @@ export default function PromptCard({
   index = 0, 
   onPasswordFail, 
   onOpenPrompt, 
-  passwordFailLimit = 5 
+  passwordFailLimit = 5,
+  viewMode = 'grid'
 }: PromptCardProps) {
   const [passwordInput, setPasswordInput] = useState('');
   const [showCardPassword, setShowCardPassword] = useState(false);
@@ -106,6 +108,166 @@ export default function PromptCard({
   const handleRippleEnd = (id: number) => {
     setRipples((prev) => prev.filter((r) => r.id !== id));
   };
+
+  if (viewMode === 'list') {
+    return (
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15 } }}
+        whileHover={{ y: -1 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 260, 
+          damping: 20,
+          delay: Math.min(index * 0.02, 0.3)
+        }}
+        onClick={handleCardClick}
+        className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-4 shadow-sm hover:border-[var(--zone-primary)] transition-colors duration-250 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer"
+      >
+        {/* Premium ripple elements */}
+        {ripples.map((ripple) => (
+          <span
+            key={ripple.id}
+            onAnimationEnd={() => handleRippleEnd(ripple.id)}
+            className="absolute pointer-events-none rounded-full bg-[var(--zone-primary)]/15 animate-premium-ripple"
+            style={{
+              left: ripple.x - ripple.size / 2,
+              top: ripple.y - ripple.size / 2,
+              width: ripple.size,
+              height: ripple.size,
+            }}
+          />
+        ))}
+
+        {/* Cột chính: Icon + Tiêu đề + Phân khoa */}
+        <div className="flex items-start gap-3 flex-1 min-w-0 relative z-10 pointer-events-none">
+          <span className="text-2xl mt-0.5 shrink-0 select-none bg-[var(--zone-primary-lighter)] p-2 rounded-xl border border-[var(--zone-border)]/40">
+            {prompt.icon || '📝'}
+          </span>
+          <div className="min-w-0 pr-4 pointer-events-auto">
+            <h3 className="text-sm font-bold text-[var(--zone-primary)] flex items-center gap-1.5 leading-snug truncate">
+              <span>{prompt.title}</span>
+              {hasPassword && (
+                <span className="text-amber-500 animate-pulse shrink-0" title="Có mật khẩu bảo vệ">
+                  {unlocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                </span>
+              )}
+            </h3>
+            {prompt.description && (
+              <p className="text-xs text-[var(--text-muted)] line-clamp-1 mt-1 font-medium leading-relaxed">
+                {prompt.description}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              {prompt.genre && (
+                <span className="text-[10px] text-[var(--zone-primary)] font-bold bg-[var(--zone-primary-lighter)] px-2 py-0.5 rounded-md border border-[var(--zone-border)]/30">
+                  {prompt.genre}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-[var(--text-muted)] bg-slate-500/5 px-2 py-0.5 rounded-md">
+                <Eye className="w-3 h-3 opacity-70" />
+                <span>{prompt.viewCount || 0} lượt xem</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Cột các Tags - Ẩn trên mobile để tối ưu không gian, hiển thị từ tablet */}
+        {prompt.tags && prompt.tags.length > 0 && (
+          <div className="hidden lg:flex flex-wrap gap-1 max-w-[250px] shrink-0 items-center relative z-10">
+            {prompt.tags.map((tag) => (
+              <span
+                key={tag}
+                onClick={() => onTagClick(tag)}
+                className="bg-transparent text-[var(--zone-primary)] border border-[var(--zone-border)] text-[10px] font-semibold px-2 py-0.5 rounded-full cursor-pointer hover:bg-[var(--zone-primary)] hover:text-white transition duration-200"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Cột nút Actions */}
+        <div className="flex items-center gap-2 shrink-0 justify-end mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-[var(--zone-border)] relative z-10">
+          <a
+            href={prompt.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleOpenPrompt}
+            className="inline-flex items-center gap-1 bg-[var(--zone-primary)] hover:bg-[var(--zone-primary-light)] text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-sm transition hover:scale-105"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Vào Prompt
+          </a>
+
+          {isAdmin && (
+            <button
+              onClick={() => onEdit(prompt)}
+              className="inline-flex items-center gap-1 bg-slate-100/10 hover:bg-[var(--zone-primary-lighter)] text-[var(--text)] border border-[var(--zone-border)] hover:border-[var(--zone-primary)] hover:text-[var(--zone-primary)] px-2.5 py-1.5 rounded-xl font-bold text-xs transition duration-250 cursor-pointer"
+            >
+              <Edit2 className="w-3 h-3" />
+              Sửa
+            </button>
+          )}
+        </div>
+
+        {/* Thử thách password dạng phủ đắp cho list view */}
+        {challengeOpen && (
+          <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-sm flex flex-row items-center justify-between p-4 z-20 gap-3">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <Lock className="w-5 h-5 text-amber-500 animate-[bounce_1.5s_infinite] shrink-0" />
+              <div className="min-w-0">
+                <h4 className="text-xs font-bold text-slate-100 truncate">Khám bệnh án này cần Mật khẩu</h4>
+                {prompt.passwordHint && (
+                  <p className="text-[10px] text-amber-400 italic truncate">Gợi ý: {prompt.passwordHint}</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+              <div className="relative w-full sm:w-[150px]">
+                <input
+                  type={showCardPassword ? "text" : "password"}
+                  placeholder="Nhập mã mở..."
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                  className="px-2.5 pr-8 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCardPassword(!showCardPassword)}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer p-1 hover:scale-110 active:scale-90"
+                  title={showCardPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showCardPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                </button>
+              </div>
+
+              {errorMsg && <p className="text-[10px] text-rose-500 truncate max-w-[120px]">{errorMsg}</p>}
+
+              <div className="flex gap-1.5">
+                <button
+                  onClick={handleVerifyPassword}
+                  className="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2.5 py-1 rounded-md font-bold transition cursor-pointer"
+                >
+                  Mở Khóa
+                </button>
+                <button
+                  onClick={() => setChallengeOpen(false)}
+                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -231,7 +393,7 @@ export default function PromptCard({
             <button
               type="button"
               onClick={() => setShowCardPassword(!showCardPassword)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer p-1.5 hover:scale-110 active:scale-90"
               title={showCardPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
             >
               {showCardPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}

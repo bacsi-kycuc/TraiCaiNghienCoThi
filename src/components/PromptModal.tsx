@@ -248,7 +248,7 @@ export default function PromptModal({
                     <button
                       type="button"
                       onClick={() => setShowPromptPassword(!showPromptPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition cursor-pointer"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition cursor-pointer p-1.5 hover:scale-110 active:scale-90"
                       title={showPromptPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                     >
                       {showPromptPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
