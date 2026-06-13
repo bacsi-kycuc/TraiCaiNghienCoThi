@@ -16,6 +16,7 @@ import MusicPlayer from './components/MusicPlayer';
 import Toast from './components/Toast';
 import RandomRollBanner from './components/RandomRollBanner';
 import ConfettiCelebration from './components/ConfettiCelebration';
+import FavoriteLeaderBanner from './components/FavoriteLeaderBanner';
 
 // Default mock values
 import { 
@@ -55,6 +56,79 @@ export default function App() {
   const [genresHospital, setGenresHospital] = useState<Genre[]>([]);
   const [genresCaiNghien, setGenresCaiNghien] = useState<Genre[]>([]);
   const [records, setRecords] = useState<RegRecord[]>([]);
+  const [votesData, setVotesData] = useState<Record<string, number>>({});
+
+  // --- Initialize & Sync Votes data in LocalStorage ---
+  useEffect(() => {
+    const savedVotesStr = localStorage.getItem('char_votes');
+    let localVotes: Record<string, number> = {};
+    if (savedVotesStr) {
+      try {
+        localVotes = JSON.parse(savedVotesStr);
+      } catch (e) {
+        console.error("Lỗi parse votesData từ localStorage", e);
+      }
+    }
+
+    // Gộp tất cả prompts từ cả 2 phân khu để mảng dữ liệu mẫu luôn phong phú
+    const allPrompts = [...promptsHospital, ...promptsCaiNghien];
+    let hasNew = false;
+    
+    allPrompts.forEach((p) => {
+      const key = p.id.toString();
+      if (localVotes[key] === undefined) {
+        // Sinh ngẫu nhiên lượng phiếu bầu mượt mà ban đầu cho bác sĩ/điều dưỡng chưa có vote
+        localVotes[key] = (p.id * 17) % 89 + 15;
+        hasNew = true;
+      }
+    });
+
+    if (hasNew || !savedVotesStr) {
+      localStorage.setItem('char_votes', JSON.stringify(localVotes));
+    }
+    setVotesData(localVotes);
+  }, [promptsHospital, promptsCaiNghien]);
+
+  const handleVote = (characterId: string) => {
+    const today = new Date().toLocaleDateString('sv'); // 'YYYY-MM-DD' formatting
+    const savedDatesStr = localStorage.getItem('char_voted_dates');
+    let votedDates: Record<string, string> = {};
+    if (savedDatesStr) {
+      try {
+        votedDates = JSON.parse(savedDatesStr);
+      } catch (e) {
+        console.error("Lỗi parse votedDates", e);
+      }
+    }
+
+    // Find the character name for personalized toast feedback
+    const allPrompts = [...promptsHospital, ...promptsCaiNghien];
+    const character = allPrompts.find((p) => p.id.toString() === characterId);
+    const name = character ? character.title : 'Bác sĩ / Điều dưỡng';
+
+    if (votedDates[characterId] === today) {
+      setToastMessage(`💖 Hôm nay bé đã thả tim cho "${name}" rồi!`);
+      return;
+    }
+
+    // Vote is allowed, update global state & local storage
+    setVotesData((prev) => {
+      const updated = {
+        ...prev,
+        [characterId]: (prev[characterId] || 0) + 1,
+      };
+      localStorage.setItem('char_votes', JSON.stringify(updated));
+      return updated;
+    });
+
+    votedDates[characterId] = today;
+    localStorage.setItem('char_voted_dates', JSON.stringify(votedDates));
+
+    setToastMessage(`🎉 Đã bình chọn thành công cho "${name}"!`);
+
+    // Trigger confetti pháo hoa rực rỡ dồi dào chúc mừng!
+    window.dispatchEvent(new CustomEvent('celebrate-confetti'));
+  };
 
   // --- Theme Wallpapers, links & audio states ---
   const [settings, setSettings] = useState<Settings>({
@@ -454,7 +528,7 @@ export default function App() {
     localStorage.removeItem('adminLoginTime');
     setShowLogoutConfirm(false);
     setCurrentScreen('welcome');
-    setToastMessage('🚪 Đã đăng xuất hoàn toàn khỏi tài khoản Admin.');
+    setToastMessage('Đã đăng xuất!');
   };
 
   // Portal Entrance Triggers
@@ -796,6 +870,13 @@ export default function App() {
               {/* Main Contents catalog list */}
               <main className="flex flex-col gap-5">
                 
+                {/* Top Favorited Leader Banner */}
+                <FavoriteLeaderBanner 
+                  prompts={activePrompts} 
+                  votesData={votesData} 
+                  onVote={handleVote} 
+                />
+
                 {/* Random Roll Banner */}
                 <RandomRollBanner 
                   prompts={activePrompts} 
@@ -889,6 +970,8 @@ export default function App() {
                           onOpenPrompt={handleOpenPrompt}
                           passwordFailLimit={settings.passwordFailLimit || 5}
                           viewMode={viewMode}
+                          votes={votesData[p.id.toString()] || 0}
+                          onVote={handleVote}
                         />
                       ))
                     )}

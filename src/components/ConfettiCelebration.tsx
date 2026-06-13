@@ -26,30 +26,11 @@ const CELEBRATION_COLORS = [
 
 export default function ConfettiCelebration() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isActive, setIsActive] = useState(false);
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number | null>(null);
 
+  // Setup initial size & handle resizing of the canvas dynamically
   useEffect(() => {
-    const handleCelebrate = () => {
-      setIsActive(true);
-      createExplosion();
-    };
-
-    window.addEventListener('celebrate-confetti', handleCelebrate);
-
-    return () => {
-      window.removeEventListener('celebrate-confetti', handleCelebrate);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
-
-  // Update canvas sizing on mount & resize
-  useEffect(() => {
-    if (!isActive) return;
-
     const handleResize = () => {
       const canvas = canvasRef.current;
       if (canvas) {
@@ -60,8 +41,27 @@ export default function ConfettiCelebration() {
 
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isActive]);
+
+    const handleCelebrate = () => {
+      // Refresh canvas dimensions quickly to support size shifts
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      createExplosion();
+    };
+
+    window.addEventListener('celebrate-confetti', handleCelebrate);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('celebrate-confetti', handleCelebrate);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   const createExplosion = () => {
     const width = window.innerWidth;
@@ -202,11 +202,8 @@ export default function ConfettiCelebration() {
       animationFrameRef.current = requestAnimationFrame(tick);
     } else {
       animationFrameRef.current = null;
-      setIsActive(false);
     }
   };
-
-  if (!isActive) return null;
 
   return (
     <canvas

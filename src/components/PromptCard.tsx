@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ExternalLink, Edit2, Lock, Unlock, Eye, EyeOff } from 'lucide-react';
 import { Prompt } from '../types';
+import VoteHeartWidget from './VoteHeartWidget';
 
 interface PromptCardProps {
   key?: React.Key;
@@ -14,6 +15,8 @@ interface PromptCardProps {
   onOpenPrompt?: (prompt: Prompt) => void;
   passwordFailLimit?: number;
   viewMode?: 'grid' | 'list';
+  votes?: number;
+  onVote?: (id: string) => void;
 }
 
 export default function PromptCard({ 
@@ -25,7 +28,9 @@ export default function PromptCard({
   onPasswordFail, 
   onOpenPrompt, 
   passwordFailLimit = 5,
-  viewMode = 'grid'
+  viewMode = 'grid',
+  votes = 0,
+  onVote
 }: PromptCardProps) {
   const [passwordInput, setPasswordInput] = useState('');
   const [showCardPassword, setShowCardPassword] = useState(false);
@@ -193,6 +198,16 @@ export default function PromptCard({
 
         {/* Cột nút Actions */}
         <div className="flex items-center gap-2 shrink-0 justify-end mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-[var(--zone-border)] relative z-10">
+          {onVote && (
+            <div className="shrink-0 mr-1 scale-90 md:scale-95">
+              <VoteHeartWidget 
+                characterId={prompt.id.toString()} 
+                votes={votes} 
+                onVote={onVote} 
+              />
+            </div>
+          )}
+
           <a
             href={prompt.url}
             target="_blank"
@@ -306,8 +321,18 @@ export default function PromptCard({
       ))}
 
       <div className="relative z-10 pointer-events-none">
-        <div className="pointer-events-auto">
-          <h3 className="text-lg font-bold text-[var(--zone-primary)] pr-20 flex items-center gap-1.5 leading-snug">
+        <div className="pointer-events-auto relative">
+          {onVote && (
+            <div className="absolute top-0 right-0 z-20 scale-90 md:scale-95">
+              <VoteHeartWidget 
+                characterId={prompt.id.toString()} 
+                votes={votes} 
+                onVote={onVote} 
+              />
+            </div>
+          )}
+
+          <h3 className="text-lg font-bold text-[var(--zone-primary)] pr-24 flex items-center gap-1.5 leading-snug">
             <span>{prompt.icon || '📝'}</span>
             <span>{prompt.title}</span>
             {hasPassword && (
