@@ -14,6 +14,7 @@ import PromptModal from './components/PromptModal';
 import SettingsModal from './components/SettingsModal';
 import MusicPlayer from './components/MusicPlayer';
 import Toast from './components/Toast';
+import RandomRollBanner from './components/RandomRollBanner';
 
 // Default mock values
 import { 
@@ -793,6 +794,12 @@ export default function App() {
 
               {/* Main Contents catalog list */}
               <main className="flex flex-col gap-5">
+                
+                {/* Random Roll Banner */}
+                <RandomRollBanner 
+                  prompts={activePrompts} 
+                  onPromptClick={(prompt) => setSearchFilter(prompt.title)} 
+                />
                 
                 {/* Search query box & view mode controls */}
                 <div className="flex flex-col sm:flex-row gap-4 p-4 bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl shadow-lg backdrop-blur-md text-[var(--text)] items-center">
