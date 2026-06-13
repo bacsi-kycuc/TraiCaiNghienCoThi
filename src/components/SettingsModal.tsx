@@ -80,7 +80,16 @@ export default function SettingsModal({
           try {
             onSaveSettings('musicData', event.target.result as string);
             onSaveSettings('musicUrl', ''); // Clear track URL when uploading raw data
-            onSaveSettings('musicName', file.name);
+            
+            const isDefaultOrEmpty = !localMusicName.trim() || 
+                                     localMusicName === 'Lullaby of Co Thi (Mặc định)' || 
+                                     localMusicName.startsWith('http') || 
+                                     localMusicName.startsWith('Mẫu nhạc trực tiếp:') ||
+                                     localMusicName.startsWith('Nhạc liên kết:');
+            
+            const finalName = isDefaultOrEmpty ? file.name : localMusicName.trim();
+            onSaveSettings('musicName', finalName);
+            setLocalMusicName(finalName);
           } catch (error) {
             alert("⚠️ Trình duyệt báo không đủ bộ nhớ để lưu bài hát chất lượng quá cao. Hãy dùng bài hát dung lượng nhỏ hơn hoặc dán liên kết âm nhạc!");
           }
@@ -149,9 +158,18 @@ export default function SettingsModal({
     if (!youtubeUrl.trim()) return;
     onSaveSettings('musicUrl', youtubeUrl.trim());
     onSaveSettings('musicData', ''); // Clear base64 data when setting custom URL stream
-    onSaveSettings('musicName', 'Mẫu nhạc trực tiếp: ' + youtubeUrl.trim());
+    
+    const isDefaultOrEmpty = !localMusicName.trim() || 
+                             localMusicName === 'Lullaby of Co Thi (Mặc định)' || 
+                             localMusicName.startsWith('http') || 
+                             localMusicName.startsWith('Mẫu nhạc trực tiếp:') ||
+                             localMusicName.startsWith('Nhạc liên kết:');
+    
+    const finalName = isDefaultOrEmpty ? 'Nhạc liên kết: ' + youtubeUrl.trim() : localMusicName.trim();
+    onSaveSettings('musicName', finalName);
+    setLocalMusicName(finalName);
     setYoutubeUrl('');
-    alert('✅ Đã định tuyến nhạc từ liên kết thành công!');
+    alert('✅ Đã dán liên kết nhạc thành công!');
   };
 
   return (
@@ -420,17 +438,46 @@ export default function SettingsModal({
           {activeTab === 'music' && (
             <div className="space-y-4 animate-[in_0.15s_ease-out]">
 
+              {/* Status Indicator of Active Music */}
+              <div className="p-4 border border-[var(--border)] rounded-xl bg-[var(--bg2)]/60 space-y-2">
+                <span className="text-xs font-bold text-slate-400 block uppercase tracking-wider">🎵 Nhạc Nền Hiện Tại:</span>
+                <div className="flex items-center justify-between gap-3 bg-black/40 p-3 rounded-xl border border-[var(--border)]/60">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="text-lg">🎼</span>
+                    <span className="text-xs font-extrabold text-[var(--primary)] truncate">
+                      {settings.musicName || 'Lullaby of Co Thi (Mặc định)'}
+                    </span>
+                  </div>
+                  {(settings.musicData || settings.musicUrl) && (
+                    <button 
+                      onClick={() => {
+                        onSaveSettings('musicData', '');
+                        onSaveSettings('musicUrl', '');
+                        onSaveSettings('musicName', 'Lullaby of Co Thi (Mặc định)');
+                        setLocalMusicName('Lullaby of Co Thi (Mặc định)');
+                        alert('🗑️ Đã gỡ bỏ nhạc tự chọn và khôi phục Nhạc Nền Mặc Định!');
+                      }}
+                      className="whitespace-nowrap px-3 py-1.5 bg-rose-950 hover:bg-rose-900 border border-rose-900 text-rose-100 font-extrabold text-[10px] rounded-lg cursor-pointer transition shadow"
+                    >
+                      Quay Về Mặc Định (Gỡ)
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Display Name Customizer */}
               <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-900/40 space-y-2.5">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">✏️ Tên hiển thị bài hát:</span>
                 <input 
                   type="text" 
-                  placeholder="Tên bài hát hiển thị..." 
+                  placeholder="Nhập tên bài hát theo ý thích..." 
                   value={localMusicName}
-                  onChange={(e) => setLocalMusicName(e.target.value)}
+                  onChange={(e) => {
+                    setLocalMusicName(e.target.value);
+                  }}
                   onBlur={() => {
-                    if (localMusicName !== settings.musicName) {
-                      onSaveSettings('musicName', localMusicName);
+                    if (localMusicName.trim() && localMusicName !== settings.musicName) {
+                      onSaveSettings('musicName', localMusicName.trim());
                     }
                   }}
                   onKeyDown={(e) => {
@@ -440,10 +487,14 @@ export default function SettingsModal({
                   }}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
                 />
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 italic">
+                  * Nhập tên hiển thị tại đây trước hoặc sau khi tải file/dán link để giữ tên nhạc theo ý thích của bạn.
+                </p>
               </div>
 
+              {/* Method A: Upload MP3 */}
               <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">📂 Tải bài hát trực tiếp (.mp3, .wav):</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">📂 Phương thức 1: Tải bài hát trực tiếp (.mp3, .wav):</span>
                 <div className="flex items-center gap-3">
                   <input 
                     type="file" 
@@ -458,31 +509,34 @@ export default function SettingsModal({
                   >
                     Tải File Âm Thanh
                   </button>
-                  <span className="text-xs text-slate-400 dark:text-slate-400 italic truncate max-w-[280px]">
-                    {settings.musicName || 'Chưa dán/nạp bài hát nào'}
+                  <span className="text-xs text-slate-400 dark:text-slate-400 italic truncate max-w-[155px]">
+                    {settings.musicData ? 'Đã tải lên file nhạc thành công' : 'Chưa tải file nhạc lên'}
                   </span>
-                  {(settings.musicData || settings.musicUrl) && (
+                  {settings.musicData && (
                     <button 
                       onClick={() => {
                         onSaveSettings('musicData', '');
-                        onSaveSettings('musicUrl', '');
-                        onSaveSettings('musicName', 'Lullaby of Co Thi (Mặc định)');
-                        alert('🗑️ Đã gỡ bỏ bài hát tự chọn và chuyển về Nhạc Nền Mặc Định!');
+                        if (!settings.musicUrl) {
+                          onSaveSettings('musicName', 'Lullaby of Co Thi (Mặc định)');
+                          setLocalMusicName('Lullaby of Co Thi (Mặc định)');
+                        }
+                        alert('🗑️ Đã gỡ bỏ file nhạc tự tải!');
                       }}
-                      className="ml-auto px-3 py-1.5 bg-rose-950 hover:bg-rose-900 border border-rose-950 text-rose-100 font-extrabold text-xs rounded-xl cursor-pointer transition shadow"
+                      className="ml-auto px-2.5 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-900 text-rose-200 font-bold text-[10px] rounded-lg cursor-pointer transition"
                     >
-                      Xóa/Gỡ Nhạc
+                      Gỡ File
                     </button>
                   )}
                 </div>
               </div>
 
+              {/* Method B: YouTube link url */}
               <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">🔗 Chèn YouTube URL:</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 block">🔗 Phương thức 2: Chèn URL nguồn phát nhạc (YouTube/Direct audio...):</span>
                 <div className="flex gap-2">
                   <input 
                     type="url" 
-                    placeholder="https://youtube.com/..." 
+                    placeholder="https://youtube.com/... hoặc link âm thanh" 
                     value={youtubeUrl}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                     className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
@@ -494,6 +548,24 @@ export default function SettingsModal({
                     Dán Link
                   </button>
                 </div>
+                {settings.musicUrl && (
+                  <div className="flex items-center justify-between p-2.5 bg-black/20 border border-[var(--border)]/30 rounded-xl text-xs">
+                    <span className="text-slate-400 italic truncate max-w-[200px]">Link: {settings.musicUrl}</span>
+                    <button 
+                      onClick={() => {
+                        onSaveSettings('musicUrl', '');
+                        if (!settings.musicData) {
+                          onSaveSettings('musicName', 'Lullaby of Co Thi (Mặc định)');
+                          setLocalMusicName('Lullaby of Co Thi (Mặc định)');
+                        }
+                        alert('🗑️ Đã gỡ bỏ liên kết âm nhạc!');
+                      }}
+                      className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-900 text-rose-200 font-bold text-[10px] rounded-lg cursor-pointer transition"
+                    >
+                      Gỡ Link
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
