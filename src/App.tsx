@@ -184,13 +184,18 @@ export default function App() {
 
   // --- Password failures / Troll popup states ---
   const [showTrollOverlay, setShowTrollOverlay] = useState(false);
+  const [activeTrollMedia, setActiveTrollMedia] = useState<string>('');
+  const [activeTrollSound, setActiveTrollSound] = useState<string>('');
+  const [trollTimeLeft, setTrollTimeLeft] = useState(8000); // 8000ms = 8s
+  const TROLL_MAX_DURATION = 8000;
   const trollAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Play the troll alarm audio when triggered
   useEffect(() => {
     if (showTrollOverlay) {
-      const soundSrc = settings.passwordFailSoundUrl || 'https://assets.mixkit.co/active_storage/sfx/951/951-84.wav';
+      const soundSrc = activeTrollSound || settings.passwordFailSoundUrl || 'https://assets.mixkit.co/active_storage/sfx/951/951-84.wav';
       const audio = new Audio(soundSrc);
+      audio.volume = 0.55; // Set volume to a comfortable, moderate level to prevent too loud spikes
       audio.loop = true;
       audio.play().catch(e => console.warn("Troll audio autoplay blocked:", e));
       trollAudioRef.current = audio;
@@ -205,10 +210,31 @@ export default function App() {
         trollAudioRef.current.pause();
       }
     };
-  }, [showTrollOverlay, settings.passwordFailSoundUrl]);
+  }, [showTrollOverlay, activeTrollSound, settings.passwordFailSoundUrl]);
 
-  const handlePasswordFail = (triggerAlarm: boolean) => {
+  // Smooth millisecond-based countdown timer for the troll overlay progress bar
+  useEffect(() => {
+    if (showTrollOverlay) {
+      setTrollTimeLeft(8000);
+      const startTime = Date.now();
+      const endTime = startTime + 8000;
+      
+      const interval = setInterval(() => {
+        const remaining = Math.max(0, endTime - Date.now());
+        setTrollTimeLeft(remaining);
+        if (remaining <= 0) {
+          clearInterval(interval);
+        }
+      }, 50);
+      
+      return () => clearInterval(interval);
+    }
+  }, [showTrollOverlay]);
+
+  const handlePasswordFail = (triggerAlarm: boolean, customMedia?: string, customSound?: string) => {
     if (triggerAlarm) {
+      setActiveTrollMedia(customMedia || '');
+      setActiveTrollSound(customSound || '');
       setShowTrollOverlay(true);
     }
   };
@@ -1171,40 +1197,151 @@ export default function App() {
       )}
 
       {/* 5.9. Customizable Wrong Password Troll Alarm Overlay */}
-      {showTrollOverlay && (
-        <div className="fixed inset-0 flex items-center justify-center z-[200000] p-4 bg-rose-950/90 backdrop-blur-md">
-          <div className="bg-slate-950 border-2 border-rose-500 rounded-3xl p-6 w-full max-w-[480px] text-center shadow-2xl space-y-5 animate-premium-modal">
-            <div className="text-5xl animate-bounce">🚨 Patient Alert! 🚨</div>
-            <h2 className="font-comfortaa text-xl font-bold text-rose-500 uppercase tracking-wider">
-              PHÁ HOẠI BỆNH ÁN CỐ THỊ!
-            </h2>
-            <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-              Hệ thống phát hiện tài khoản của bạn đang cố tình bẻ khóa hồ sơ liên tục! Ban quản trị Cố Thị đã tiến hành can thiệp cưỡng chế đặc biệt!
-            </p>
-            
-            <div className="rounded-2xl overflow-hidden border border-rose-800 bg-black/40 h-[180px] flex items-center justify-center relative">
-              <img 
-                src={settings.passwordFailGifUrl || 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjNDJqNHBlOHI1b3Rnbm1reTV6ZGFxZHl6dHF6amNmaXloZHFyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ju7l5y9osyXQQ/giphy.gif'} 
-                alt="Troll Alarm" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
+      <AnimatePresence>
+        {showTrollOverlay && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-[200000] p-4 bg-rose-950/95 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="relative bg-slate-950 border-2 border-rose-500 rounded-3xl p-6 w-full max-w-[480px] text-center shadow-2xl space-y-5"
+            >
+              {/* Absolute close X button / countdown badge */}
+              {(() => {
+                const secondsRemaining = Math.max(0, Math.ceil(trollTimeLeft / 1000));
+                if (secondsRemaining > 0) {
+                  return (
+                    <div className="absolute top-4 right-4 bg-rose-950/85 border border-rose-500/40 rounded-full px-3 py-1 text-[10px] font-extrabold text-rose-400 flex items-center gap-1.5 shadow-md">
+                      <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
+                      <span>ĐANG KHÓA: {secondsRemaining}S</span>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <motion.button 
+                      initial={{ scale: 0, rotate: -90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      id="close-troll-btn"
+                      onClick={() => {
+                        setShowTrollOverlay(false);
+                        setToastMessage("💊 Can thiệp cưỡng chế thành công! Lần sau hãy cẩn thận.");
+                      }}
+                      className="absolute top-4 right-4 text-white bg-rose-600 hover:bg-rose-500 rounded-full w-8 h-8 flex items-center justify-center transition-all cursor-pointer shadow-md border border-rose-400/30 font-bold text-lg leading-none focus:outline-none"
+                      title="Đóng cảnh báo"
+                    >
+                      &times;
+                    </motion.button>
+                  );
+                }
+              })()}
 
-            <div className="pt-2">
-              <button 
-                onClick={() => {
-                  setShowTrollOverlay(false);
-                  setToastMessage("💊 Can thiệp cưỡng chế thành công! Lần sau hãy cẩn thận.");
-                }}
-                className="w-full bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-extrabold py-3 rounded-2xl text-xs cursor-pointer shadow-lg hover:shadow-rose-500/20 transition-all uppercase tracking-widest"
-              >
-                💉 Tôi hứa sẽ chữa bệnh ngoan ngoãn!
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="text-5xl animate-bounce pt-2">🚨 Patient Alert! 🚨</div>
+              <h2 className="font-comfortaa text-xl font-bold text-rose-500 uppercase tracking-wider">
+                PHÁ HOẠI BỆNH ÁN CỐ THỊ!
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed font-semibold">
+                Hệ thống phát hiện tài khoản của bạn đang cố tình bẻ khóa hồ sơ liên tục! Ban quản trị Cố Thị đã tiến hành can thiệp cưỡng chế đặc biệt!
+              </p>
+              
+              <div className="rounded-2xl overflow-hidden border border-rose-800 bg-black/40 h-[180px] flex items-center justify-center relative">
+                {(() => {
+                  const mediaSrc = activeTrollMedia || settings.passwordFailGifUrl || 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjNDJqNHBlOHI1b3Rnbm1reTV6ZGFxZHl6dHF6amNmaXloZHFyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ju7l5y9osyXQQ/giphy.gif';
+                  const isVideo = mediaSrc.startsWith('data:video/') || 
+                                  mediaSrc.split('?')[0].split('#')[0].toLowerCase().endsWith('.mp4') ||
+                                  mediaSrc.split('?')[0].split('#')[0].toLowerCase().endsWith('.webm') ||
+                                  mediaSrc.split('?')[0].split('#')[0].toLowerCase().endsWith('.mov') ||
+                                  mediaSrc.split('?')[0].split('#')[0].toLowerCase().endsWith('.ogg');
+
+                  if (isVideo) {
+                    return (
+                      <video 
+                        src={mediaSrc} 
+                        autoPlay 
+                        loop 
+                        playsInline
+                        ref={(el) => {
+                          if (el) {
+                            el.volume = 0.55; // Ensure smooth volume, avoiding too loud
+                          }
+                        }}
+                        className="w-full h-full object-cover"
+                      />
+                    );
+                  } else {
+                    return (
+                      <img 
+                        src={mediaSrc} 
+                        alt="Troll Alarm" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    );
+                  }
+                })()}
+              </div>
+
+              {/* Progress bar with glowing progress tracker */}
+              {(() => {
+                const secondsRemaining = Math.max(0, Math.ceil(trollTimeLeft / 1000));
+                const progressPercent = Math.max(0, Math.min(100, ((8000 - trollTimeLeft) / 8000) * 100));
+                return (
+                  <div className="space-y-1.5 text-left w-full pt-1">
+                    <div className="flex justify-between items-center text-[10px] font-extrabold tracking-wider text-slate-400 uppercase">
+                      <span>Đang giải mã lệnh can thiệp...</span>
+                      <span className="text-rose-400 font-mono">
+                        {secondsRemaining > 0 ? `${progressPercent.toFixed(0)}%` : 'ĐÃ ĐỦ THỜI GIAN'}
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-900 border border-slate-800 rounded-full overflow-hidden relative">
+                      <motion.div 
+                        className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 shadow-[0_0_8px_rgba(244,114,182,0.6)]"
+                        style={{ width: `${progressPercent}%` }}
+                        layout
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="pt-2">
+                {(() => {
+                  const secondsRemaining = Math.max(0, Math.ceil(trollTimeLeft / 1000));
+                  if (secondsRemaining > 0) {
+                    return (
+                      <button 
+                        disabled
+                        className="w-full bg-slate-800 text-slate-500 font-extrabold py-3 rounded-2xl text-xs cursor-not-allowed uppercase tracking-widest border border-slate-700/40 flex items-center justify-center gap-2"
+                      >
+                        🔒 Xem hết nội dung cảnh báo ({secondsRemaining}s)
+                      </button>
+                    );
+                  } else {
+                    return (
+                      <motion.button 
+                        initial={{ y: 5, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        onClick={() => {
+                          setShowTrollOverlay(false);
+                          setToastMessage("💊 Can thiệp cưỡng chế thành công! Lần sau hãy cẩn thận.");
+                        }}
+                        className="w-full bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-extrabold py-3 rounded-2xl text-xs cursor-pointer shadow-lg hover:shadow-rose-500/20 transition-all uppercase tracking-widest animate-pulse"
+                      >
+                        💉 Tôi hứa sẽ chữa bệnh ngoan ngoãn!
+                      </motion.button>
+                    );
+                  }
+                })()}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 6. System Toast alerts */}
       <Toast message={toastMessage} onClose={() => setToastMessage('')} />

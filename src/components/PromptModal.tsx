@@ -33,6 +33,11 @@ export default function PromptModal({
   const [password, setPassword] = useState('');
   const [passwordHint, setPasswordHint] = useState('');
   const [showPromptPassword, setShowPromptPassword] = useState(false);
+  
+  // Custom troll alarm fields
+  const [passwordFailLimit, setPasswordFailLimit] = useState<number>(5);
+  const [passwordFailGifUrl, setPasswordFailGifUrl] = useState('');
+  const [passwordFailSoundUrl, setPasswordFailSoundUrl] = useState('');
 
   // Sync state if editing
   useEffect(() => {
@@ -47,6 +52,9 @@ export default function PromptModal({
       setEnablePassword(!!editingPrompt.password);
       setPassword(editingPrompt.password || '');
       setPasswordHint(editingPrompt.passwordHint || '');
+      setPasswordFailLimit(editingPrompt.passwordFailLimit !== undefined ? editingPrompt.passwordFailLimit : 5);
+      setPasswordFailGifUrl(editingPrompt.passwordFailGifUrl || '');
+      setPasswordFailSoundUrl(editingPrompt.passwordFailSoundUrl || '');
     } else {
       setZone('hospital');
       setTitle('');
@@ -58,6 +66,9 @@ export default function PromptModal({
       setEnablePassword(false);
       setPassword('');
       setPasswordHint('');
+      setPasswordFailLimit(5);
+      setPasswordFailGifUrl('');
+      setPasswordFailSoundUrl('');
     }
   }, [editingPrompt, isOpen]);
 
@@ -94,7 +105,10 @@ export default function PromptModal({
       tags,
       zone,
       password: enablePassword ? password : '',
-      passwordHint: enablePassword ? passwordHint : ''
+      passwordHint: enablePassword ? passwordHint : '',
+      passwordFailLimit: enablePassword ? passwordFailLimit : undefined,
+      passwordFailGifUrl: enablePassword ? passwordFailGifUrl : '',
+      passwordFailSoundUrl: enablePassword ? passwordFailSoundUrl : ''
     }, zone);
 
     if (!editingPrompt) {
@@ -107,6 +121,9 @@ export default function PromptModal({
       setEnablePassword(false);
       setPassword('');
       setPasswordHint('');
+      setPasswordFailLimit(5);
+      setPasswordFailGifUrl('');
+      setPasswordFailSoundUrl('');
     }
   };
 
@@ -255,6 +272,134 @@ export default function PromptModal({
                     </button>
                   </div>
                 </div>
+
+                <div className="col-span-2 border-t border-dashed border-amber-600/30 pt-3 mt-1">
+                  <span className="block text-[11px] font-extrabold uppercase tracking-widest text-amber-500 mb-2">
+                    🚨 Cấu hình Troll khi nhập sai mật khẩu:
+                  </span>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Limit */}
+                    <div className="col-span-1">
+                      <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
+                        Nhập sai tối đa
+                      </label>
+                      <input 
+                        type="number" 
+                        min={1}
+                        max={50}
+                        value={passwordFailLimit} 
+                        onChange={(e) => setPasswordFailLimit(Number(e.target.value) || 5)}
+                        className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg outline-none text-xs"
+                      />
+                    </div>
+
+                    {/* GIF/Video URL or File */}
+                    <div className="col-span-1 sm:col-span-2">
+                      <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
+                        Link ảnh GIF hoặc Video Troll
+                      </label>
+                      <div className="flex gap-1.5">
+                        <input 
+                          type="text" 
+                          value={passwordFailGifUrl} 
+                          onChange={(e) => setPasswordFailGifUrl(e.target.value)}
+                          placeholder="Bỏ trống thì dùng mặc định..."
+                          className="flex-1 px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
+                        />
+                        <label className="bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center justify-center cursor-pointer select-none transition shrink-0 active:scale-95">
+                          📤 Tải tệp
+                          <input 
+                            type="file" 
+                            accept="image/*,video/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 2 * 1024 * 1024) {
+                                  alert("⚠️ Tệp tin hoành tráng quá nà! Vui lòng chọn tệp nhỏ hơn 2MB để tránh nghẽn lưu trữ nhé.");
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setPasswordFailGifUrl(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }} 
+                          />
+                        </label>
+                      </div>
+                      {passwordFailGifUrl && (
+                        <div className="mt-1 flex items-center justify-between text-[9px] text-emerald-400 font-semibold gap-2">
+                          <span className="truncate pr-2">
+                            {passwordFailGifUrl.startsWith('data:') ? '✅ Tệp cục bộ đã nạp' : '🔗 Đang dùng link tài nguyên'}
+                          </span>
+                          <button 
+                            type="button" 
+                            onClick={() => setPasswordFailGifUrl('')}
+                            className="text-rose-400 hover:text-rose-300 cursor-pointer shrink-0"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Audio URL or File */}
+                    <div className="col-span-1 sm:col-span-3">
+                      <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
+                        Giọng nói / Âm thanh cảnh báo (Audio)
+                      </label>
+                      <div className="flex gap-1.5">
+                        <input 
+                          type="text" 
+                          value={passwordFailSoundUrl} 
+                          onChange={(e) => setPasswordFailSoundUrl(e.target.value)}
+                          placeholder="Còi hú răn đe mặc định..."
+                          className="flex-1 px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
+                        />
+                        <label className="bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center justify-center cursor-pointer select-none transition shrink-0 active:scale-95">
+                          📤 Tải âm thanh
+                          <input 
+                            type="file" 
+                            accept="audio/*" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 2 * 1024 * 1024) {
+                                  alert("⚠️ Nhạc nền hơi dài nà! Hãy dùng file nhạc nhẹ nén <2MB nhe bé!");
+                                  return;
+                                }
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setPasswordFailSoundUrl(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }} 
+                          />
+                        </label>
+                      </div>
+                      {passwordFailSoundUrl && (
+                        <div className="mt-1 flex items-center justify-between text-[9px] text-emerald-400 font-semibold gap-2">
+                          <span className="truncate pr-2">
+                            {passwordFailSoundUrl.startsWith('data:') ? '✅ Tệp âm thanh cục bộ đã nạp' : '🔗 Đang dùng link nhạc'}
+                          </span>
+                          <button 
+                            type="button" 
+                            onClick={() => setPasswordFailSoundUrl('')}
+                            className="text-rose-400 hover:text-rose-300 cursor-pointer shrink-0"
+                          >
+                            Xóa
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
               </div>
             )}
           </div>

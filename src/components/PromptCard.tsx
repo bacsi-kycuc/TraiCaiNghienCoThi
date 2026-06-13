@@ -11,7 +11,7 @@ interface PromptCardProps {
   onEdit: (prompt: Prompt) => void;
   onTagClick: (tag: string) => void;
   index?: number;
-  onPasswordFail?: (triggerAlarm: boolean) => void;
+  onPasswordFail?: (triggerAlarm: boolean, customMedia?: string, customSound?: string) => void;
   onOpenPrompt?: (prompt: Prompt) => void;
   passwordFailLimit?: number;
   viewMode?: 'grid' | 'list';
@@ -68,12 +68,12 @@ export default function PromptCard({
       window.open(prompt.url, '_blank', 'noreferrer,noopener');
     } else {
       const nextFail = localFailCount + 1;
-      const limit = passwordFailLimit;
+      const limit = prompt.passwordFailLimit !== undefined ? prompt.passwordFailLimit : passwordFailLimit;
       if (nextFail >= limit) {
         setLocalFailCount(0);
         setErrorMsg('');
         if (onPasswordFail) {
-          onPasswordFail(true);
+          onPasswordFail(true, prompt.passwordFailGifUrl, prompt.passwordFailSoundUrl);
         }
       } else {
         setLocalFailCount(nextFail);

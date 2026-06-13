@@ -18,6 +18,9 @@ export interface Prompt {
   createdAt?: string;
   updatedAt?: string;
   viewCount?: number;
+  passwordFailLimit?: number;
+  passwordFailGifUrl?: string;
+  passwordFailSoundUrl?: string;
 }
 
 export interface RegRecord {
