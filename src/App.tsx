@@ -249,10 +249,13 @@ export default function App() {
   // Audio loading logic when Base64 track or direct URL updates
   useEffect(() => {
     if (audioRef.current) {
+      const isYT = settings.musicUrl && (settings.musicUrl.includes('youtube.com') || settings.musicUrl.includes('youtu.be'));
       if (settings.musicData) {
         audioRef.current.src = settings.musicData;
-      } else if (settings.musicUrl) {
+      } else if (settings.musicUrl && !isYT) {
         audioRef.current.src = settings.musicUrl;
+      } else if (isYT) {
+        audioRef.current.removeAttribute('src'); // Stop standard audio if streaming YouTube
       } else {
         // Fallback to default
         audioRef.current.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
@@ -369,20 +372,23 @@ export default function App() {
     // Enter Main Console View
     setCurrentScreen('app');
     
-    // Attempt continuous audio playback on first user gesture
-    if (audioRef.current && !audioRef.current.src) {
-      if (settings.musicData) {
-        audioRef.current.src = settings.musicData;
-      } else if (settings.musicUrl) {
-        audioRef.current.src = settings.musicUrl;
-      } else {
-        audioRef.current.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
+    // Attempt continuous audio playback on first user gesture (for non-YouTube tracks)
+    const isYT = settings.musicUrl && (settings.musicUrl.includes('youtube.com') || settings.musicUrl.includes('youtu.be'));
+    if (audioRef.current && !isYT) {
+      if (!audioRef.current.src) {
+        if (settings.musicData) {
+          audioRef.current.src = settings.musicData;
+        } else if (settings.musicUrl) {
+          audioRef.current.src = settings.musicUrl;
+        } else {
+          audioRef.current.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
+        }
       }
-    }
-    if (audioRef.current && audioRef.current.paused) {
-      audioRef.current.play().catch(() => {
-        console.log("Audio playback deferred pending further user gestures.");
-      });
+      if (audioRef.current.paused) {
+        audioRef.current.play().catch(() => {
+          console.log("Audio playback deferred pending further user gestures.");
+        });
+      }
     }
   };
 
@@ -751,6 +757,8 @@ export default function App() {
         <MusicPlayer 
           audioElement={audioElement}
           musicName={settings.musicName}
+          musicUrl={settings.musicUrl}
+          musicData={settings.musicData}
         />
       )}
 
