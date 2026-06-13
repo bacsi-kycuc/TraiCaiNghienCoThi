@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, FolderPlus, Image, Music, Link as LinkIcon, Trash, User, LogOut, Edit2 } from 'lucide-react';
 import { Genre, Settings } from '../types';
 
@@ -46,6 +46,14 @@ export default function SettingsModal({
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [discordUrl, setDiscordUrl] = useState(settings.discordLink || '');
   const [facebookUrl, setFacebookUrl] = useState(settings.facebookLink || '');
+
+  // Local state for music display name to prevent IME (Vietnamese typing) focus loss / composition problems
+  const [localMusicName, setLocalMusicName] = useState(settings.musicName || '');
+
+  // Synchronize local state with settings props when it changes
+  useEffect(() => {
+    setLocalMusicName(settings.musicName || '');
+  }, [settings.musicName]);
 
   if (!isOpen) return null;
 
@@ -418,8 +426,18 @@ export default function SettingsModal({
                 <input 
                   type="text" 
                   placeholder="Tên bài hát hiển thị..." 
-                  value={settings.musicName || ''}
-                  onChange={(e) => onSaveSettings('musicName', e.target.value)}
+                  value={localMusicName}
+                  onChange={(e) => setLocalMusicName(e.target.value)}
+                  onBlur={() => {
+                    if (localMusicName !== settings.musicName) {
+                      onSaveSettings('musicName', localMusicName);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
                 />
               </div>
@@ -436,13 +454,26 @@ export default function SettingsModal({
                   />
                   <button 
                     onClick={() => document.getElementById('audio-uploader')?.click()}
-                    className="px-4 py-1.5 bg-[var(--zone-primary)] text-white text-xs font-bold rounded-xl hover:opacity-90 shadow cursor-pointer animate-pulse"
+                    className="px-4 py-1.5 bg-[var(--zone-primary)] text-white text-xs font-bold rounded-xl hover:opacity-90 shadow cursor-pointer"
                   >
                     Tải File Âm Thanh
                   </button>
                   <span className="text-xs text-slate-400 dark:text-slate-400 italic truncate max-w-[280px]">
                     {settings.musicName || 'Chưa dán/nạp bài hát nào'}
                   </span>
+                  {(settings.musicData || settings.musicUrl) && (
+                    <button 
+                      onClick={() => {
+                        onSaveSettings('musicData', '');
+                        onSaveSettings('musicUrl', '');
+                        onSaveSettings('musicName', 'Lullaby of Co Thi (Mặc định)');
+                        alert('🗑️ Đã gỡ bỏ bài hát tự chọn và chuyển về Nhạc Nền Mặc Định!');
+                      }}
+                      className="ml-auto px-3 py-1.5 bg-rose-950 hover:bg-rose-900 border border-rose-950 text-rose-100 font-extrabold text-xs rounded-xl cursor-pointer transition shadow"
+                    >
+                      Xóa/Gỡ Nhạc
+                    </button>
+                  )}
                 </div>
               </div>
 
