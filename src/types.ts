@@ -17,6 +17,7 @@ export interface Prompt {
   passwordHint?: string;
   createdAt?: string;
   updatedAt?: string;
+  viewCount?: number;
 }
 
 export interface RegRecord {
@@ -42,4 +43,8 @@ export interface Settings {
   musicName: string;
   musicData: string;
   musicUrl: string;
+  // Customizable Password Failure Troll Attack
+  passwordFailLimit?: number;
+  passwordFailGifUrl?: string;
+  passwordFailSoundUrl?: string;
 }

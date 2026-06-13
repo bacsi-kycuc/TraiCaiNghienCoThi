@@ -11,7 +11,7 @@ interface SettingsModalProps {
   onDeleteGenre: (name: string, zone: 'hospital' | 'cai-nghien') => void;
   onUpdateGenre?: (oldName: string, oldZone: 'hospital' | 'cai-nghien', newName: string, newIcon: string, newZone: 'hospital' | 'cai-nghien', description?: string) => Promise<void>;
   settings: Settings;
-  onSaveSettings: (key: keyof Settings, value: string) => void;
+  onSaveSettings: (key: keyof Settings, value: any) => void;
   onAdminLogout?: () => void;
 }
 
@@ -173,8 +173,8 @@ export default function SettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-[10000] p-4 transition-opacity duration-350">
-      <div className="bg-[var(--card)] text-[var(--text)] rounded-3xl p-6 w-full max-w-[800px] shadow-2xl max-h-[92vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out] border border-[var(--border)]">
+    <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4 animate-premium-backdrop">
+      <div className="bg-[var(--card)] text-[var(--text)] rounded-3xl p-6 w-full max-w-[800px] shadow-2xl max-h-[92vh] flex flex-col justify-between overflow-hidden border border-[var(--border)] animate-premium-modal">
         
         {/* Header */}
         <div className="flex justify-between items-center pb-4 border-b border-[var(--border)]">
@@ -566,6 +566,52 @@ export default function SettingsModal({
                     </button>
                   </div>
                 )}
+              </div>
+
+              {/* Cài đặt Báo động Troll khi nhập sai mật khẩu bệnh án */}
+              <div id="password-alarm-settings" className="p-4 border border-rose-500/20 dark:border-rose-900/35 rounded-xl bg-rose-500/5 dark:bg-rose-950/10 space-y-3">
+                <span className="text-xs font-bold text-rose-500 dark:text-rose-400 block flex items-center gap-1.5">
+                  🚨 Cấu hình Báo động Troll Bệnh Án:
+                </span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 block">Số lần nhập sai tối đa:</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      max="1000"
+                      value={settings.passwordFailLimit ?? 5}
+                      onChange={(e) => onSaveSettings('passwordFailLimit', parseInt(e.target.value) || 5)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] font-bold text-slate-400 block">Link ảnh GIF động Troll:</label>
+                    <input 
+                      type="text" 
+                      placeholder="Mặc định: Rickroll"
+                      value={settings.passwordFailGifUrl ?? ''}
+                      onChange={(e) => onSaveSettings('passwordFailGifUrl', e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs outline-none focus:ring-1 focus:ring-rose-500 animate-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 block">Link file âm thanh Báo Động:</label>
+                  <input 
+                    type="text" 
+                    placeholder="Mặc định: Tiếng còi buzzer"
+                    value={settings.passwordFailSoundUrl ?? ''}
+                    onChange={(e) => onSaveSettings('passwordFailSoundUrl', e.target.value)}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg text-xs outline-none focus:ring-1 focus:ring-rose-500 animate-none"
+                  />
+                </div>
+                <p className="text-[9px] text-slate-400 italic">
+                  * Khi bệnh nhân nhập sai mật khẩu quá số lần tối đa, hệ thống sẽ tự phát nhạc cảnh cáo và nhảy màn hình troll rùng rợn/hài hước.
+                </p>
               </div>
             </div>
           )}

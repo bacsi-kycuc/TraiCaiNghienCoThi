@@ -24,12 +24,30 @@ export default function MusicPlayer({ audioElement, musicName, musicUrl, musicDa
   const ytId = getYouTubeId(musicUrl || '');
   const isYT = !!ytId;
 
-  // Handle standard audio element volume setting
+  // Handle standard audio element volume setting and YouTube content volume postMessage
   useEffect(() => {
-    if (audioElement) {
+    if (audioElement && !isYT) {
       audioElement.volume = volume / 100;
     }
-  }, [audioElement, volume]);
+
+    if (isYT && isPlaying) {
+      const iframe = document.getElementById('hidden-youtube-player') as HTMLIFrameElement | null;
+      if (iframe && iframe.contentWindow) {
+        try {
+          iframe.contentWindow.postMessage(
+            JSON.stringify({
+              event: 'command',
+              func: 'setVolume',
+              args: [volume]
+            }),
+            '*'
+          );
+        } catch (e) {
+          console.warn("YouTube volume sync failed:", e);
+        }
+      }
+    }
+  }, [audioElement, volume, isYT, isPlaying]);
 
   // Synchronize playing events from standard audio element
   useEffect(() => {
@@ -55,28 +73,41 @@ export default function MusicPlayer({ audioElement, musicName, musicUrl, musicDa
 
   // Autoplay and Source Change Coordination Handler
   useEffect(() => {
+    const hasCustomMusic = !!musicData || (!!musicUrl && musicUrl !== 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' && musicUrl !== '');
+
     // If it's a YouTube source, make sure standard audio is paused, and auto-play YT
     if (isYT) {
       if (audioElement) {
         audioElement.pause();
       }
-      setIsPlaying(true); // Mount and start YT embed autoplay
+      if (hasCustomMusic) {
+        setIsPlaying(true); // Mount and start YT embed autoplay
+      } else {
+        setIsPlaying(false);
+      }
     } else {
       // Standard audio direct URL or Base64 uploaded data
       if (audioElement) {
-        const targetSrc = musicData || musicUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
+        const targetSrc = musicData || musicUrl || '';
         
-        if (audioElement.src !== targetSrc) {
-          audioElement.src = targetSrc;
-          audioElement.load();
-        }
+        if (targetSrc) {
+          if (audioElement.src !== targetSrc) {
+            audioElement.src = targetSrc;
+            audioElement.load();
+          }
 
-        // Trigger autoplay on mount/load
-        audioElement.play()
-          .then(() => setIsPlaying(true))
-          .catch(err => {
-            console.log("Autoplay deferred or blocked by browser policy. User gesture needed.", err);
-          });
+          if (hasCustomMusic) {
+            // Trigger autoplay on mount/load
+            audioElement.play()
+              .then(() => setIsPlaying(true))
+              .catch(err => {
+                console.log("Autoplay deferred or blocked by browser policy. User gesture needed.", err);
+              });
+          }
+        } else {
+          audioElement.removeAttribute('src');
+          setIsPlaying(false);
+        }
       }
     }
   }, [audioElement, musicUrl, musicData, isYT]);
@@ -89,7 +120,12 @@ export default function MusicPlayer({ audioElement, musicName, musicUrl, musicDa
       if (isPlaying) {
         audioElement.pause();
       } else {
-        audioElement.play().catch(err => {
+        const targetSrc = musicData || musicUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
+        if (audioElement.src !== targetSrc) {
+          audioElement.src = targetSrc;
+          audioElement.load();
+        }
+        audioElement.play().then(() => setIsPlaying(true)).catch(err => {
           console.warn("Audio play blocked by browser. Interaction required first.", err);
         });
       }
@@ -128,11 +164,32 @@ export default function MusicPlayer({ audioElement, musicName, musicUrl, musicDa
       {/* Hidden YouTube Autoplay Iframe when playing */}
       {isYT && isPlaying && ytId && (
         <iframe
-          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&loop=1&playlist=${ytId}&controls=0`}
+          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&loop=1&playlist=${ytId}&controls=0&enablejsapi=1`}
           allow="autoplay; encrypted-media"
           style={{ display: 'none', width: '0px', height: '0px', border: 'none' }}
           id="hidden-youtube-player"
           title="Hidden YouTube background audio player"
+          onLoad={(e) => {
+            const iframe = e.target as HTMLIFrameElement;
+            const sendVolume = () => {
+              if (iframe && iframe.contentWindow) {
+                try {
+                  iframe.contentWindow.postMessage(
+                    JSON.stringify({
+                      event: 'command',
+                      func: 'setVolume',
+                      args: [volume]
+                    }),
+                    '*'
+                  );
+                } catch (err) {}
+              }
+            };
+            // Send volume commands at multiple intervals to ensure integration success
+            [150, 450, 1000, 2000].forEach(delay => {
+              setTimeout(sendVolume, delay);
+            });
+          }}
         />
       )}
 

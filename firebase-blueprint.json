@@ -29,7 +29,8 @@
         "password": { "type": "string" },
         "passwordHint": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "viewCount": { "type": "integer" }
       },
       "required": ["title", "url", "icon", "description", "genre", "tags", "zone"]
     },

@@ -58,7 +58,10 @@ export default function App() {
     cainhienBgFileName: '',
     musicName: 'Lullaby of Co Thi (Mặc định)',
     musicData: '',
-    musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'
+    musicUrl: '',
+    passwordFailLimit: 5,
+    passwordFailGifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjNDJqNHBlOHI1b3Rnbm1reTV6ZGFxZHl6dHF6amNmaXloZHFyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ju7l5y9osyXQQ/giphy.gif',
+    passwordFailSoundUrl: 'https://assets.mixkit.co/active_storage/sfx/951/951-84.wav'
   });
 
   // --- Active Filters ---
@@ -94,6 +97,48 @@ export default function App() {
   // --- Modals payload tracking ---
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [toastMessage, setToastMessage] = useState('');
+
+  // --- Password failures / Troll popup states ---
+  const [showTrollOverlay, setShowTrollOverlay] = useState(false);
+  const trollAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Play the troll alarm audio when triggered
+  useEffect(() => {
+    if (showTrollOverlay) {
+      const soundSrc = settings.passwordFailSoundUrl || 'https://assets.mixkit.co/active_storage/sfx/951/951-84.wav';
+      const audio = new Audio(soundSrc);
+      audio.loop = true;
+      audio.play().catch(e => console.warn("Troll audio autoplay blocked:", e));
+      trollAudioRef.current = audio;
+    } else {
+      if (trollAudioRef.current) {
+        trollAudioRef.current.pause();
+        trollAudioRef.current = null;
+      }
+    }
+    return () => {
+      if (trollAudioRef.current) {
+        trollAudioRef.current.pause();
+      }
+    };
+  }, [showTrollOverlay, settings.passwordFailSoundUrl]);
+
+  const handlePasswordFail = (triggerAlarm: boolean) => {
+    if (triggerAlarm) {
+      setShowTrollOverlay(true);
+    }
+  };
+
+  const handleOpenPrompt = async (prompt: Prompt) => {
+    try {
+      const docId = `prompt_${prompt.id}`;
+      const promptDocRef = doc(db, 'prompts', docId);
+      const currentViews = prompt.viewCount || 0;
+      await setDoc(promptDocRef, { viewCount: currentViews + 1 }, { merge: true });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `prompts/prompt_${prompt.id}`);
+    }
+  };
 
   // --- Background Audio Management ---
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -150,7 +195,10 @@ export default function App() {
           cainhienBgFileName: '',
           musicName: 'Lullaby of Co Thi (Mặc định)',
           musicData: '',
-          musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'
+          musicUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
+          passwordFailLimit: 5,
+          passwordFailGifUrl: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjNDJqNHBlOHI1b3Rnbm1reTV6ZGFxZHl6dHF6amNmaXloZHFyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ju7l5y9osyXQQ/giphy.gif',
+          passwordFailSoundUrl: 'https://assets.mixkit.co/active_storage/sfx/951/951-84.wav'
         };
         setDoc(settingsDocRef, defaultSettingsData).catch(err => {
           handleFirestoreError(err, OperationType.WRITE, 'settings/global_settings');
@@ -269,32 +317,36 @@ export default function App() {
   useEffect(() => {
     if (audioRef.current) {
       const isYT = settings.musicUrl && (settings.musicUrl.includes('youtube.com') || settings.musicUrl.includes('youtu.be'));
-      
-      // Assist the native browser autoplay policy
-      audioRef.current.autoplay = true;
+      const hasCustomMusic = !!settings.musicData || (!!settings.musicUrl && settings.musicUrl !== 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' && settings.musicUrl !== '');
 
-      if (settings.musicData) {
-        audioRef.current.src = settings.musicData;
-      } else if (settings.musicUrl && !isYT) {
-        audioRef.current.src = settings.musicUrl;
-      } else if (isYT) {
-        audioRef.current.removeAttribute('src'); // Stop standard audio if streaming YouTube
+      if (hasCustomMusic) {
+        // Assist the native browser autoplay policy
+        audioRef.current.autoplay = true;
+
+        if (settings.musicData) {
+          audioRef.current.src = settings.musicData;
+        } else if (settings.musicUrl && !isYT) {
+          audioRef.current.src = settings.musicUrl;
+        } else if (isYT) {
+          audioRef.current.removeAttribute('src'); // Stop standard audio if streaming YouTube
+        }
+
+        // Try autoplaying immediately with strict try-catch handling
+        if (!isYT) {
+          const attemptPlay = async () => {
+            try {
+              await audioRef.current?.play();
+              console.log("🔊 Tự động phát nhạc nền thành công!");
+            } catch (error) {
+              console.warn("⚠️ Tự động phát nhạc bị trình duyệt giới hạn (Cần người dùng nhấp chuột tương tác trước):", error);
+            }
+          };
+          attemptPlay();
+        }
       } else {
-        // Fallback to default
-        audioRef.current.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
-      }
-
-      // Try autoplaying immediately with strict try-catch handling
-      if (!isYT) {
-        const attemptPlay = async () => {
-          try {
-            await audioRef.current?.play();
-            console.log("🔊 Tự động phát nhạc nền thành công!");
-          } catch (error) {
-            console.warn("⚠️ Tự động phát nhạc bị trình duyệt giới hạn (Cần người dùng nhấp chuột tương tác trước):", error);
-          }
-        };
-        attemptPlay();
+        // If no custom music is set, keep idle, clear fallback source from audio element
+        audioRef.current.autoplay = false;
+        audioRef.current.removeAttribute('src');
       }
     }
   }, [settings.musicData, settings.musicUrl]);
@@ -437,7 +489,7 @@ export default function App() {
   };
 
   // Main system datasets mutations
-  const handleSaveSettings = async (key: keyof Settings, value: string) => {
+  const handleSaveSettings = async (key: keyof Settings, value: any) => {
     try {
       const settingsDocRef = doc(db, 'settings', 'global_settings');
       await setDoc(settingsDocRef, { [key]: value }, { merge: true });
@@ -518,7 +570,8 @@ export default function App() {
       id: finalId,
       zone: targetZone,
       createdAt: data.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      viewCount: (payload as any).viewCount || 0
     };
 
     try {
@@ -794,6 +847,9 @@ export default function App() {
                             setActiveTagFilter(tag === activeTagFilter ? '' : tag);
                             setActiveGenreFilter(''); // reset sidebar genre
                           }}
+                          onPasswordFail={handlePasswordFail}
+                          onOpenPrompt={handleOpenPrompt}
+                          passwordFailLimit={settings.passwordFailLimit || 5}
                         />
                       ))
                     )}
@@ -818,7 +874,7 @@ export default function App() {
           }
         }} 
         loop 
-        autoPlay
+        autoPlay={!!settings.musicData || (!!settings.musicUrl && settings.musicUrl !== 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' && settings.musicUrl !== '')}
       />
 
       {/* Dynamic Background Audio Player widget inside Console */}
@@ -845,8 +901,8 @@ export default function App() {
 
       {/* 2. Admin Credentials Lock modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[20000] p-4 transition-opacity duration-300">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 w-full max-w-[380px] shadow-2xl text-emerald-350">
+        <div className="fixed inset-0 flex items-center justify-center z-[20000] p-4 animate-premium-backdrop">
+          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 w-full max-w-[380px] shadow-2xl text-emerald-350 animate-premium-modal">
             <div className="flex justify-between items-center mb-4">
               <span className="font-bold text-base font-comfortaa text-emerald-400">🔑 Khóa Quản Trị Viên</span>
               <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
@@ -938,8 +994,8 @@ export default function App() {
 
       {/* 5. Logout confirmation overlay */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-[99998] p-4 transition-opacity duration-300">
-          <div className="bg-white dark:bg-slate-850 rounded-3xl p-6 max-w-[360px] text-center shadow-2xl space-y-4 animate-[in_0.22s_ease-out]">
+        <div className="fixed inset-0 flex items-center justify-center z-[99998] p-4 animate-premium-backdrop">
+          <div className="bg-white dark:bg-slate-850 rounded-3xl p-6 max-w-[360px] text-center shadow-2xl space-y-4 animate-premium-modal">
             <div className="text-4xl">👋</div>
             <h2 className="font-comfortaa text-lg font-bold text-[var(--zone-primary)]">Đóng phiên kiểm soát?</h2>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
@@ -965,8 +1021,8 @@ export default function App() {
 
       {/* 5.5. Deep custom safety confirmation dialog for destructive actions */}
       {customConfirm.isOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[100000] p-4 transition-all duration-300">
-          <div className="bg-slate-900 border border-slate-750 rounded-3xl p-6 max-w-[365px] text-center shadow-2xl space-y-4 animate-[in_0.18s_ease-out] border-t-4 border-t-rose-600">
+        <div className="fixed inset-0 flex items-center justify-center z-[100000] p-4 animate-premium-backdrop">
+          <div className="bg-slate-900 border border-slate-750 rounded-3xl p-6 max-w-[365px] text-center shadow-2xl space-y-4 border-t-4 border-t-rose-600 animate-premium-modal">
             <div className="text-4xl animate-bounce">{customConfirm.icon}</div>
             <h2 className="font-comfortaa text-md font-extrabold text-slate-100 uppercase tracking-widest leading-snug">
               {customConfirm.title}
@@ -986,6 +1042,42 @@ export default function App() {
                 className="flex-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-200 font-extrabold py-2.5 rounded-xl text-xs cursor-pointer transition shadow"
               >
                 {customConfirm.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5.9. Customizable Wrong Password Troll Alarm Overlay */}
+      {showTrollOverlay && (
+        <div className="fixed inset-0 flex items-center justify-center z-[200000] p-4 bg-rose-950/90 backdrop-blur-md">
+          <div className="bg-slate-950 border-2 border-rose-500 rounded-3xl p-6 w-full max-w-[480px] text-center shadow-2xl space-y-5 animate-premium-modal">
+            <div className="text-5xl animate-bounce">🚨 Patient Alert! 🚨</div>
+            <h2 className="font-comfortaa text-xl font-bold text-rose-500 uppercase tracking-wider">
+              PHÁ HOẠI BỆNH ÁN CỐ THỊ!
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed font-semibold">
+              Hệ thống phát hiện tài khoản của bạn đang cố tình bẻ khóa hồ sơ liên tục! Ban quản trị Cố Thị đã tiến hành can thiệp cưỡng chế đặc biệt!
+            </p>
+            
+            <div className="rounded-2xl overflow-hidden border border-rose-800 bg-black/40 h-[180px] flex items-center justify-center relative">
+              <img 
+                src={settings.passwordFailGifUrl || 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjNDJqNHBlOHI1b3Rnbm1reTV6ZGFxZHl6dHF6amNmaXloZHFyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ju7l5y9osyXQQ/giphy.gif'} 
+                alt="Troll Alarm" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+
+            <div className="pt-2">
+              <button 
+                onClick={() => {
+                  setShowTrollOverlay(false);
+                  setToastMessage("💊 Can thiệp cưỡng chế thành công! Lần sau hãy cẩn thận.");
+                }}
+                className="w-full bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-extrabold py-3 rounded-2xl text-xs cursor-pointer shadow-lg hover:shadow-rose-500/20 transition-all uppercase tracking-widest"
+              >
+                💉 Tôi hứa sẽ chữa bệnh ngoan ngoãn!
               </button>
             </div>
           </div>

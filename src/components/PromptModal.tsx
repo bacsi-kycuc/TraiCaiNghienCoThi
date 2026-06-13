@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Tag, Lock, Trash2 } from 'lucide-react';
+import { X, Tag, Lock, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Prompt, Genre } from '../types';
 
 interface PromptModalProps {
@@ -32,6 +32,7 @@ export default function PromptModal({
   const [enablePassword, setEnablePassword] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordHint, setPasswordHint] = useState('');
+  const [showPromptPassword, setShowPromptPassword] = useState(false);
 
   // Sync state if editing
   useEffect(() => {
@@ -112,8 +113,8 @@ export default function PromptModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-[10000] p-4 transition-opacity duration-350">
-      <div className="bg-[var(--card)] text-[var(--text)] rounded-3xl p-6 w-full max-w-[600px] shadow-2xl max-h-[90vh] flex flex-col justify-between overflow-hidden scale-100 animate-[in_0.2s_ease-out] border-2 border-[var(--border)]">
+    <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4 animate-premium-backdrop">
+      <div className="bg-[var(--card)] text-[var(--text)] rounded-3xl p-6 w-full max-w-[600px] shadow-2xl max-h-[90vh] flex flex-col justify-between overflow-hidden border-2 border-[var(--border)] animate-premium-modal">
         
         {/* Header */}
         <div className="flex justify-between items-center pb-4 mb-4 border-b border-[var(--border)]">
@@ -236,13 +237,23 @@ export default function PromptModal({
                 </div>
                 <div>
                   <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">Mật khẩu khóa *</label>
-                  <input 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Mã khóa mở prompt..."
-                    className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showPromptPassword ? "text" : "password"} 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Mã khóa mở prompt..."
+                      className="w-full pl-3 pr-10 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPromptPassword(!showPromptPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition cursor-pointer"
+                      title={showPromptPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showPromptPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
