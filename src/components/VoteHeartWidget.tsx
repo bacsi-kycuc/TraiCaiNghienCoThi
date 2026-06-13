@@ -24,10 +24,10 @@ export default function VoteHeartWidget({
   return (
     <div 
       id={`vote-heart-widget-${characterId}`}
-      className="bg-[#190924]/90 border border-[#260C35] rounded-2xl p-3.5 flex flex-col items-center justify-center gap-1.5 min-w-[76px] select-none shadow-lg text-center"
+      className="bg-[#3F2A52]/95 border border-[#75619D]/40 rounded-2xl p-3.5 flex flex-col items-center justify-center gap-1.5 min-w-[76px] select-none shadow-lg text-center"
     >
       {/* 1. Vote Count Badge Label */}
-      <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#f472b6] drop-shadow-sm whitespace-nowrap">
+      <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#BEAEDB] drop-shadow-sm whitespace-nowrap">
         {votes} PHIẾU
       </span>
 
@@ -41,7 +41,7 @@ export default function VoteHeartWidget({
         title="Thả tim bầu chọn"
       >
         <Heart 
-          className="w-6.5 h-6.5 transition-all duration-300 stroke-[#a55166] group-hover:stroke-rose-400 fill-transparent group-hover:fill-rose-400 filter drop-shadow-md"
+          className="w-6.5 h-6.5 transition-all duration-300 stroke-[#75619D] group-hover:stroke-rose-400 fill-transparent group-hover:fill-rose-400 filter drop-shadow-md"
         />
       </motion.button>
     </div>
