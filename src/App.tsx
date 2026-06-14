@@ -209,6 +209,82 @@ export default function App() {
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [toastMessage, setToastMessage] = useState("");
 
+  // --- Offline Fallback Mode state and handling ---
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+
+  const loadOfflineFallbackData = () => {
+    setIsOfflineMode(true);
+    
+    // settings
+    try {
+      const savedSettings = localStorage.getItem("local_settings");
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      } else {
+        const defaultSettingsData: Settings = {
+          discordLink: "https://discord.gg",
+          facebookLink: "https://facebook.com",
+          welcomeBgImage: "",
+          welcomeBgFileName: "",
+          hospitalBgImage: "",
+          hospitalBgFileName: "",
+          cainhienBgImage: "",
+          cainhienBgFileName: "",
+          musicName: "Lullaby of Co Thi (Mặc định)",
+          musicData: "",
+          musicUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+        };
+        setSettings(defaultSettingsData);
+        localStorage.setItem("local_settings", JSON.stringify(defaultSettingsData));
+      }
+    } catch (e) {
+      console.error("Lỗi tải Settings offline: ", e);
+    }
+
+    // genres
+    try {
+      const savedGenres = localStorage.getItem("local_genres");
+      if (savedGenres) {
+        setGenres(JSON.parse(savedGenres));
+      } else {
+        const defaultGenres = [...defaultGenresHospital, ...defaultGenresCaiNghien];
+        setGenres(defaultGenres);
+        localStorage.setItem("local_genres", JSON.stringify(defaultGenres));
+      }
+    } catch (e) {
+      console.error("Lỗi tải Genres offline: ", e);
+    }
+
+    // prompts
+    try {
+      const savedPrompts = localStorage.getItem("local_prompts");
+      let allPrompts = [];
+      if (savedPrompts) {
+        allPrompts = JSON.parse(savedPrompts);
+      } else {
+        allPrompts = [...defaultPromptsHospital, ...defaultPromptsCaiNghien];
+        localStorage.setItem("local_prompts", JSON.stringify(allPrompts));
+      }
+      setPromptsHospital(allPrompts.filter((p: Prompt) => p.zone === "hospital"));
+      setPromptsCaiNghien(allPrompts.filter((p: Prompt) => p.zone === "cai-nghien"));
+    } catch (e) {
+      console.error("Lỗi tải Prompts offline: ", e);
+    }
+
+    // records
+    try {
+      const savedRecords = localStorage.getItem("local_records");
+      if (savedRecords) {
+        setRecords(JSON.parse(savedRecords));
+      } else {
+        setRecords(defaultRegRecords);
+        localStorage.setItem("local_records", JSON.stringify(defaultRegRecords));
+      }
+    } catch (e) {
+      console.error("Lỗi tải Records offline: ", e);
+    }
+  };
+
   // --- Troll popup states ---
   const [showTrollPopup, setShowTrollPopup] = useState(false);
   const [activeTrollConfig, setActiveTrollConfig] = useState<{
@@ -298,6 +374,28 @@ export default function App() {
   }, []);
 
   const handleOpenPrompt = async (prompt: Prompt) => {
+    if (isOfflineMode) {
+      const updateOfflineView = () => {
+        try {
+          const saved = localStorage.getItem("local_prompts");
+          let allPrompts: Prompt[] = saved ? JSON.parse(saved) : [...defaultPromptsHospital, ...defaultPromptsCaiNghien];
+          allPrompts = allPrompts.map((p) => {
+            if (p.id === prompt.id) {
+              return { ...p, viewCount: (p.viewCount || 0) + 1 };
+            }
+            return p;
+          });
+          localStorage.setItem("local_prompts", JSON.stringify(allPrompts));
+          setPromptsHospital(allPrompts.filter((p) => p.zone === "hospital"));
+          setPromptsCaiNghien(allPrompts.filter((p) => p.zone === "cai-nghien"));
+        } catch (e) {
+          console.error("Lỗi cập nhật lượt xem ngoại tuyến: ", e);
+        }
+      };
+      updateOfflineView();
+      return;
+    }
+
     try {
       const docId = `prompt_${prompt.id}`;
       const promptDocRef = doc(db, "prompts", docId);
@@ -305,11 +403,17 @@ export default function App() {
       // Reset error count on success
       await setDoc(promptDocRef, { viewCount: increment(1), errorCount: 0 }, { merge: true });
     } catch (err) {
-      handleFirestoreError(
-        err,
-        OperationType.WRITE,
-        `prompts/prompt_${prompt.id}`,
-      );
+      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+        console.warn("Hết hạn ngạch, kích hoạt tệp tin ngoại tuyến khi xem bệnh án");
+        setIsOfflineMode(true);
+        loadOfflineFallbackData();
+      } else {
+        handleFirestoreError(
+          err,
+          OperationType.WRITE,
+          `prompts/prompt_${prompt.id}`,
+        );
+      }
     }
   };
 
@@ -365,9 +469,10 @@ export default function App() {
       } catch (error) {
         if (
           error instanceof Error &&
-          error.message.includes("the client is offline")
+          (error.message.includes("offline") || error.message.includes("quota") || error.message.includes("Quota") || error.message.includes("limit") || error.message.includes("exceeded"))
         ) {
-          console.error("Please check your Firebase configuration.");
+          console.warn("Lỗi hạn ngạch hoặc kết nối Firestore, sáp nhập chế độ ngoại tuyến: ", error);
+          loadOfflineFallbackData();
         }
       }
     };
@@ -399,20 +504,14 @@ export default function App() {
               "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
           };
           setDoc(settingsDocRef, defaultSettingsData).catch((err) => {
-            handleFirestoreError(
-              err,
-              OperationType.WRITE,
-              "settings/global_settings",
-            );
+            console.warn("Tự động dọn dẹp và chuyển sang chế độ ngoại tuyến: ", err);
+            loadOfflineFallbackData();
           });
         }
       },
       (err) => {
-        handleFirestoreError(
-          err,
-          OperationType.GET,
-          "settings/global_settings",
-        );
+        console.warn("Lỗi đăng ký theo dõi Settings, dùng dữ liệu ngoại tuyến: ", err);
+        loadOfflineFallbackData();
       },
     );
 
@@ -427,7 +526,8 @@ export default function App() {
         setGenres(loaded);
       },
       (err) => {
-        handleFirestoreError(err, OperationType.GET, "genres");
+        console.warn("Lỗi đăng ký theo dõi Genres, dùng dữ liệu ngoại tuyến: ", err);
+        loadOfflineFallbackData();
       },
     );
 
@@ -450,27 +550,22 @@ export default function App() {
           defaultPromptsHospital.forEach((p) => {
             const docId = `prompt_${p.id}`;
             setDoc(doc(db, "prompts", docId), p).catch((err) => {
-              handleFirestoreError(
-                err,
-                OperationType.WRITE,
-                `prompts/${docId}`,
-              );
+              console.warn("Ghi đè Prompts thất bại: ", err);
+              loadOfflineFallbackData();
             });
           });
           defaultPromptsCaiNghien.forEach((p) => {
             const docId = `prompt_${p.id}`;
             setDoc(doc(db, "prompts", docId), p).catch((err) => {
-              handleFirestoreError(
-                err,
-                OperationType.WRITE,
-                `prompts/${docId}`,
-              );
+              console.warn("Ghi đè Prompts thất bại: ", err);
+              loadOfflineFallbackData();
             });
           });
         }
       },
       (err) => {
-        handleFirestoreError(err, OperationType.GET, "prompts");
+        console.warn("Lỗi đăng ký theo dõi Prompts, dùng dữ liệu ngoại tuyến: ", err);
+        loadOfflineFallbackData();
       },
     );
 
@@ -490,17 +585,15 @@ export default function App() {
           defaultRegRecords.forEach((r) => {
             const docId = `record_${r.id}`;
             setDoc(doc(db, "records", docId), r).catch((err) => {
-              handleFirestoreError(
-                err,
-                OperationType.WRITE,
-                `records/${docId}`,
-              );
+              console.warn("Ghi đè Sổ chẩn trị thất bại: ", err);
+              loadOfflineFallbackData();
             });
           });
         }
       },
       (err) => {
-        handleFirestoreError(err, OperationType.GET, "records");
+        console.warn("Lỗi đăng ký theo dõi Records, dùng dữ liệu ngoại tuyến: ", err);
+        loadOfflineFallbackData();
       },
     );
 
@@ -784,15 +877,30 @@ export default function App() {
 
   // Main system datasets mutations
   const handleSaveSettings = async (key: keyof Settings, value: any) => {
+    if (isOfflineMode) {
+      setSettings((prev) => {
+        const updated = { ...prev, [key]: value };
+        localStorage.setItem("local_settings", JSON.stringify(updated));
+        return updated;
+      });
+      setToastMessage("💾 Đã lưu cấu hình thiết lập ngoại tuyến!");
+      return;
+    }
     try {
       const settingsDocRef = doc(db, "settings", "global_settings");
       await setDoc(settingsDocRef, { [key]: value }, { merge: true });
     } catch (err) {
-      handleFirestoreError(
-        err,
-        OperationType.WRITE,
-        "settings/global_settings",
-      );
+      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+        setIsOfflineMode(true);
+        loadOfflineFallbackData();
+        setToastMessage("⚠️ Hệ thống đổi sang Lưu trữ Ngoại tuyến!");
+      } else {
+        handleFirestoreError(
+          err,
+          OperationType.WRITE,
+          "settings/global_settings",
+        );
+      }
     }
   };
 
@@ -801,6 +909,17 @@ export default function App() {
     icon: string,
     description?: string,
   ) => {
+    if (isOfflineMode) {
+      setGenres((prev) => {
+        const genreData: Genre = { name, icon };
+        if (description) genreData.description = description;
+        const updated = [...prev, genreData];
+        localStorage.setItem("local_genres", JSON.stringify(updated));
+        return updated;
+      });
+      setToastMessage(`📂 Đã khởi tạo Chuyên khoa mới (Ngoại tuyến): ${icon} ${name}`);
+      return;
+    }
     const docId = `global_${name}`.replace(/[^a-zA-Z0-9_\-]/g, "_");
     try {
       const genreData: any = { name, icon };
@@ -810,7 +929,13 @@ export default function App() {
       await setDoc(doc(db, "genres", docId), genreData);
       setToastMessage(`📂 Đã khởi tạo Chuyên khoa mới: ${icon} ${name}`);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `genres/${docId}`);
+      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+        setIsOfflineMode(true);
+        loadOfflineFallbackData();
+        setToastMessage("⚠️ Đã chuyển sang Lưu trữ Ngoại tuyến!");
+      } else {
+        handleFirestoreError(err, OperationType.WRITE, `genres/${docId}`);
+      }
     }
   };
 
@@ -820,6 +945,22 @@ export default function App() {
     newIcon: string,
     newDescription?: string,
   ) => {
+    if (isOfflineMode) {
+      setGenres((prev) => {
+        const updated = prev.map((g) => {
+          if (g.name === oldName) {
+            const updatedG: Genre = { name: newName, icon: newIcon };
+            if (newDescription) updatedG.description = newDescription;
+            return updatedG;
+          }
+          return g;
+        });
+        localStorage.setItem("local_genres", JSON.stringify(updated));
+        return updated;
+      });
+      setToastMessage(`💾 Đã cập nhật chuyên khoa ngoại tuyến: ${newIcon} ${newName}`);
+      return;
+    }
     // Attempting to delete old formats (both with zone prefix and new global prefix)
     const oldZoneIds = [
       `hospital_${oldName}`.replace(/[^a-zA-Z0-9_\-]/g, "_"),
@@ -844,7 +985,13 @@ export default function App() {
       await setDoc(doc(db, "genres", newDocId), genreData);
       setToastMessage(`💾 Đã cập nhật chuyên khoa: ${newIcon} ${newName}`);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `genres/${newDocId}`);
+      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+        setIsOfflineMode(true);
+        loadOfflineFallbackData();
+        setToastMessage("⚠️ Đã chuyển sang Lưu trữ Ngoại tuyến!");
+      } else {
+        handleFirestoreError(err, OperationType.WRITE, `genres/${newDocId}`);
+      }
     }
   };
 
@@ -857,6 +1004,16 @@ export default function App() {
       cancelText: "Hủy bỏ",
       icon: "🗑️",
       onConfirm: async () => {
+        if (isOfflineMode) {
+          setGenres((prev) => {
+            const updated = prev.filter((g) => g.name !== name);
+            localStorage.setItem("local_genres", JSON.stringify(updated));
+            return updated;
+          });
+          setToastMessage(`🗑️ Đã bãi bỏ chuyên khoa ngoại tuyến: ${name}`);
+          setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
+          return;
+        }
         const oldZoneIds = [
           `hospital_${name}`.replace(/[^a-zA-Z0-9_\-]/g, "_"),
           `cai-nghien_${name}`.replace(/[^a-zA-Z0-9_\-]/g, "_"),
@@ -869,11 +1026,17 @@ export default function App() {
           }
           setToastMessage(`🗑️ Đã bãi bỏ chuyên khoa: ${name}`);
         } catch (err) {
-          handleFirestoreError(
-            err,
-            OperationType.DELETE,
-            `genres/global_${name}`,
-          );
+          if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+            setIsOfflineMode(true);
+            loadOfflineFallbackData();
+            setToastMessage("⚠️ Đã chuyển sang Lưu trữ Ngoại tuyến!");
+          } else {
+            handleFirestoreError(
+              err,
+              OperationType.DELETE,
+              `genres/global_${name}`,
+            );
+          }
         }
         setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
       },
@@ -901,11 +1064,36 @@ export default function App() {
       viewCount: existingPrompt?.viewCount || (payload as any).viewCount || 0,
     };
 
+    if (isOfflineMode) {
+      const saveOfflinePrompts = () => {
+        try {
+          const saved = localStorage.getItem("local_prompts");
+          let allPrompts: Prompt[] = saved ? JSON.parse(saved) : [...defaultPromptsHospital, ...defaultPromptsCaiNghien];
+          allPrompts = allPrompts.filter((p) => p.id !== finalId);
+          allPrompts.unshift(promptDoc);
+          localStorage.setItem("local_prompts", JSON.stringify(allPrompts));
+          setPromptsHospital(allPrompts.filter((p) => p.zone === "hospital"));
+          setPromptsCaiNghien(allPrompts.filter((p) => p.zone === "cai-nghien"));
+        } catch (e) {
+          console.error("Lỗi lưu Prompts offline: ", e);
+        }
+      };
+      saveOfflinePrompts();
+      setToastMessage(`✅ Đã lưu bệnh án ngoại tuyến: ${data.title}`);
+      return;
+    }
+
     try {
       await setDoc(doc(db, "prompts", docId), promptDoc);
       setToastMessage(`✅ Đã lưu bệnh án: ${data.title}`);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `prompts/${docId}`);
+      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+        setIsOfflineMode(true);
+        loadOfflineFallbackData();
+        setToastMessage("⚠️ Đã chuyển sang Lưu trữ Ngoại tuyến!");
+      } else {
+        handleFirestoreError(err, OperationType.WRITE, `prompts/${docId}`);
+      }
     }
 
     // Do NOT automatically close the prompt modal or reset editing prompt as per user request
@@ -925,6 +1113,24 @@ export default function App() {
       cancelText: "Hủy bỏ",
       icon: "☠️",
       onConfirm: async () => {
+        if (isOfflineMode) {
+          try {
+            const saved = localStorage.getItem("local_prompts");
+            let allPrompts: Prompt[] = saved ? JSON.parse(saved) : [...defaultPromptsHospital, ...defaultPromptsCaiNghien];
+            allPrompts = allPrompts.filter((p) => p.id !== id);
+            localStorage.setItem("local_prompts", JSON.stringify(allPrompts));
+            setPromptsHospital(allPrompts.filter((p) => p.zone === "hospital"));
+            setPromptsCaiNghien(allPrompts.filter((p) => p.zone === "cai-nghien"));
+          } catch (e) {
+            console.error("Lỗi xóa Prompts offline: ", e);
+          }
+          
+          setShowPromptModal(false);
+          setEditingPrompt(null);
+          setToastMessage("🗑️ Bệnh án đã được thiêu hủy ngoại tuyến.");
+          setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
+          return;
+        }
         const docId = `prompt_${id}`;
         try {
           await deleteDoc(doc(db, "prompts", docId));
@@ -932,7 +1138,13 @@ export default function App() {
           setEditingPrompt(null);
           setToastMessage("🗑️ Bệnh án đã được thiêu hủy thành công.");
         } catch (err) {
-          handleFirestoreError(err, OperationType.DELETE, `prompts/${docId}`);
+          if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+            setIsOfflineMode(true);
+            loadOfflineFallbackData();
+            setToastMessage("⚠️ Đã chuyển sang Lưu trữ Ngoại tuyến!");
+          } else {
+            handleFirestoreError(err, OperationType.DELETE, `prompts/${docId}`);
+          }
         }
         setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
       },
@@ -947,13 +1159,30 @@ export default function App() {
       id,
       date: new Date().toLocaleDateString("vi-VN"),
     };
+    if (isOfflineMode) {
+      setRecords((prev) => {
+        const updated = [newRecord, ...prev];
+        localStorage.setItem("local_records", JSON.stringify(updated));
+        return updated;
+      });
+      setToastMessage(
+        `📋 Chẩn đoán ngoại tuyến của [${record.name}] đã bổ sung vào sổ.`,
+      );
+      return;
+    }
     try {
       await setDoc(doc(db, "records", docId), newRecord);
       setToastMessage(
         `📋 Chẩn đoán lâm lâm của [${record.name}] đã được ghi vào sổ chẩn trị.`,
       );
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `records/${docId}`);
+      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+        setIsOfflineMode(true);
+        loadOfflineFallbackData();
+        setToastMessage("⚠️ Đã chuyển sang Lưu trữ Ngoại tuyến!");
+      } else {
+        handleFirestoreError(err, OperationType.WRITE, `records/${docId}`);
+      }
     }
   };
 
@@ -967,12 +1196,28 @@ export default function App() {
       cancelText: "Hủy bỏ",
       icon: "📂",
       onConfirm: async () => {
+        if (isOfflineMode) {
+          setRecords((prev) => {
+            const updated = prev.filter((r) => r.id !== id);
+            localStorage.setItem("local_records", JSON.stringify(updated));
+            return updated;
+          });
+          setToastMessage("🗑️ Đã dọn dẹp hồ sơ bệnh án ngoại tuyến.");
+          setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
+          return;
+        }
         const docId = `record_${id}`;
         try {
           await deleteDoc(doc(db, "records", docId));
           setToastMessage("🗑️ Đã dọn dẹp hồ sơ bệnh án cũ.");
         } catch (err) {
-          handleFirestoreError(err, OperationType.DELETE, `records/${docId}`);
+          if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
+            setIsOfflineMode(true);
+            loadOfflineFallbackData();
+            setToastMessage("⚠️ Đã chuyển sang Lưu trữ Ngoại tuyến!");
+          } else {
+            handleFirestoreError(err, OperationType.DELETE, `records/${docId}`);
+          }
         }
         setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
       },
@@ -1038,6 +1283,14 @@ export default function App() {
     <div
       className={`min-h-screen text-[var(--text)] transition-colors duration-300 relative select-none font-sans`}
     >
+      {isOfflineMode && (
+        <div id="offline-mode-banner" className="bg-amber-600/95 text-white font-medium text-xs md:text-sm py-2.5 px-4 text-center backdrop-blur-md sticky top-0 z-50 shadow-md flex items-center justify-center gap-2 border-b border-amber-500 transition-all">
+          <span className="text-sm md:text-base">⚠️</span>
+          <span>
+            <strong>Chế độ Ngoại tuyến Tự động:</strong> Hệ thống lưu trữ đám mây (Firestore) đã vượt quá hạn ngạch ngày. Viện Tâm Thần Cố Thị đã tự động chuyển đổi sang lưu trữ ngoại tuyến trên trình duyệt (Offline Local Storage). Bé vẫn có thể xem và quản trị bệnh án an toàn!
+          </span>
+        </div>
+      )}
       <AnimatePresence mode="wait">
         {/* Welcome Screen overlay */}
         {currentScreen === "welcome" && (
