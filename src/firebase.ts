@@ -1,11 +1,26 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
 export const auth = getAuth();
+
+// Enable offline persistence to drastically reduce read quota usage and protect user data
+try {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn("Firestore offline persistence failed-precondition (multiple tabs open).");
+    } else if (err.code === 'unimplemented') {
+      console.warn("Firestore offline persistence unimplemented in this browser.");
+    } else {
+      console.warn("Firestore offline persistence error: ", err);
+    }
+  });
+} catch (e) {
+  console.warn("Failed to initialize offline persistence: ", e);
+}
 
 export enum OperationType {
   CREATE = 'create',
