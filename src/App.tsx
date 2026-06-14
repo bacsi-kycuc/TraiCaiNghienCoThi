@@ -52,6 +52,12 @@ import {
 } from "./defaultData";
 
 import { Genre, Prompt, RegRecord, Settings } from "./types";
+import {
+  retrieveFullBackupState,
+  syncAllCothiData,
+  requestPersistentStorage,
+  checkStoragePersisted,
+} from "./lib/indexedDbBackup";
 
 export default function App() {
   // --- Screen & Zone Routing ---
@@ -212,14 +218,15 @@ export default function App() {
   // --- Offline Fallback Mode state and handling ---
   const [isOfflineMode, setIsOfflineMode] = useState(false);
 
-  const loadOfflineFallbackData = () => {
+  const loadOfflineFallbackData = async () => {
     setIsOfflineMode(true);
     
-    // settings
     try {
-      const savedSettings = localStorage.getItem("local_settings");
-      if (savedSettings) {
-        setSettings(JSON.parse(savedSettings));
+      const backup = await retrieveFullBackupState();
+      
+      // Load Settings
+      if (backup.settings) {
+        setSettings(backup.settings);
       } else {
         const defaultSettingsData: Settings = {
           discordLink: "https://discord.gg",
@@ -237,51 +244,41 @@ export default function App() {
         setSettings(defaultSettingsData);
         localStorage.setItem("local_settings", JSON.stringify(defaultSettingsData));
       }
-    } catch (e) {
-      console.error("Lỗi tải Settings offline: ", e);
-    }
 
-    // genres
-    try {
-      const savedGenres = localStorage.getItem("local_genres");
-      if (savedGenres) {
-        setGenres(JSON.parse(savedGenres));
+      // Load Genres
+      if (backup.genres && backup.genres.length > 0) {
+        setGenres(backup.genres);
       } else {
         const defaultGenres = [...defaultGenresHospital, ...defaultGenresCaiNghien];
         setGenres(defaultGenres);
         localStorage.setItem("local_genres", JSON.stringify(defaultGenres));
       }
-    } catch (e) {
-      console.error("Lỗi tải Genres offline: ", e);
-    }
 
-    // prompts
-    try {
-      const savedPrompts = localStorage.getItem("local_prompts");
-      let allPrompts = [];
-      if (savedPrompts) {
-        allPrompts = JSON.parse(savedPrompts);
+      // Load Prompts
+      if (backup.prompts && backup.prompts.length > 0) {
+        setPromptsHospital(backup.prompts.filter((p: Prompt) => p.zone === "hospital"));
+        setPromptsCaiNghien(backup.prompts.filter((p: Prompt) => p.zone === "cai-nghien"));
       } else {
-        allPrompts = [...defaultPromptsHospital, ...defaultPromptsCaiNghien];
+        const allPrompts = [...defaultPromptsHospital, ...defaultPromptsCaiNghien];
+        setPromptsHospital(allPrompts.filter((p: Prompt) => p.zone === "hospital"));
+        setPromptsCaiNghien(allPrompts.filter((p: Prompt) => p.zone === "cai-nghien"));
         localStorage.setItem("local_prompts", JSON.stringify(allPrompts));
       }
-      setPromptsHospital(allPrompts.filter((p: Prompt) => p.zone === "hospital"));
-      setPromptsCaiNghien(allPrompts.filter((p: Prompt) => p.zone === "cai-nghien"));
-    } catch (e) {
-      console.error("Lỗi tải Prompts offline: ", e);
-    }
 
-    // records
-    try {
-      const savedRecords = localStorage.getItem("local_records");
-      if (savedRecords) {
-        setRecords(JSON.parse(savedRecords));
+      // Load Records
+      if (backup.records && backup.records.length > 0) {
+        setRecords(backup.records);
       } else {
         setRecords(defaultRegRecords);
         localStorage.setItem("local_records", JSON.stringify(defaultRegRecords));
       }
     } catch (e) {
-      console.error("Lỗi tải Records offline: ", e);
+      console.error("Lỗi khôi phục dữ liệu ngoại tuyến nâng cao: ", e);
+      // Absolute fallback
+      setGenres([...defaultGenresHospital, ...defaultGenresCaiNghien]);
+      setPromptsHospital(defaultPromptsHospital);
+      setPromptsCaiNghien(defaultPromptsCaiNghien);
+      setRecords(defaultRegRecords);
     }
   };
 
@@ -432,6 +429,19 @@ export default function App() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
     null,
   );
+
+  // --- Auto background dual-channel backup storage synchronization ---
+  useEffect(() => {
+    const allPrompts = [...promptsHospital, ...promptsCaiNghien];
+    // Safeguard to prevent overriding loaded data on cold start before state handles mount
+    if (genres.length === 0 && allPrompts.length === 0 && records.length === 0) return;
+
+    const delayDebounce = setTimeout(() => {
+      syncAllCothiData(settings, genres, allPrompts, records);
+    }, 1500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [settings, genres, promptsHospital, promptsCaiNghien, records]);
 
   // --- Initial System Hydration on mount ---
   useEffect(() => {
@@ -873,6 +883,63 @@ export default function App() {
     setCurrentZone(targetZone);
     setActiveGenreFilter("");
     setActiveTagFilter("");
+  };
+
+  const handleImportBackup = async (backupData: {
+    settings: Settings;
+    genres: Genre[];
+    prompts: Prompt[];
+    records: RegRecord[];
+  }) => {
+    // 1. Update React Local States
+    setSettings(backupData.settings);
+    setGenres(backupData.genres);
+    setPromptsHospital(backupData.prompts.filter((p) => p.zone === "hospital"));
+    setPromptsCaiNghien(backupData.prompts.filter((p) => p.zone === "cai-nghien"));
+    setRecords(backupData.records);
+
+    // 2. Perform Dual-Channel local writing immediately to IndexedDB and LocalStorage
+    await syncAllCothiData(
+      backupData.settings,
+      backupData.genres,
+      backupData.prompts,
+      backupData.records
+    );
+
+    setToastMessage("💾 Bản khôi phục đã áp dụng và ghi đè vào bộ nhớ máy thành công!");
+
+    // 3. Sync to Cloud Firestore if online
+    if (!isOfflineMode) {
+      try {
+        setToastMessage("☁️ Đang đồng bộ tập tin khôi phục lên đám mây Firestore...");
+        
+        // Write settings
+        await setDoc(doc(db, "settings", "global_settings"), backupData.settings);
+        
+        // Write genres
+        for (const g of backupData.genres) {
+          const docId = `global_${g.name}`.replace(/[^a-zA-Z0-9_\-]/g, "_");
+          await setDoc(doc(db, "genres", docId), g);
+        }
+
+        // Write prompts
+        for (const p of backupData.prompts) {
+          const docId = `prompt_${p.id}`;
+          await setDoc(doc(db, "prompts", docId), p);
+        }
+
+        // Write records
+        for (const r of backupData.records) {
+          const docId = `record_${r.id}`;
+          await setDoc(doc(db, "records", docId), r);
+        }
+
+        setToastMessage("✨ Thành công! Đã đồng bộ toàn bộ bệnh án lên đám mây.");
+      } catch (err) {
+        console.warn("Lỗi tải sao lưu lên đám mây (hết hạn ngạch):", err);
+        setToastMessage("💾 Đã khôi phục hoàn chỉnh ngoại tuyến trên trình duyệt này!");
+      }
+    }
   };
 
   // Main system datasets mutations
@@ -1684,6 +1751,11 @@ export default function App() {
           setShowLogoutConfirm(true);
         }}
         onResetVotes={handleResetVotes}
+        promptsHospital={promptsHospital}
+        promptsCaiNghien={promptsCaiNghien}
+        records={records}
+        onImportBackup={handleImportBackup}
+        isOfflineMode={isOfflineMode}
       />
 
       {/* 4. Add/Edit Prompt Modal */}

@@ -9,8 +9,18 @@ import {
   User,
   LogOut,
   Edit2,
+  Download,
+  Upload,
+  ShieldCheck,
+  Database,
+  FileDown,
 } from "lucide-react";
-import { Genre, Settings } from "../types";
+import { Genre, Settings, Prompt, RegRecord } from "../types";
+import { 
+  checkStoragePersisted, 
+  requestPersistentStorage,
+  getFromIndexedDB
+} from "../lib/indexedDbBackup";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -28,9 +38,21 @@ interface SettingsModalProps {
   onSaveSettings: (key: keyof Settings, value: any) => void;
   onAdminLogout?: () => void;
   onResetVotes?: () => void;
+  
+  // Backup enhancements properties
+  promptsHospital?: Prompt[];
+  promptsCaiNghien?: Prompt[];
+  records?: RegRecord[];
+  onImportBackup?: (backupData: {
+    settings: Settings;
+    genres: Genre[];
+    prompts: Prompt[];
+    records: RegRecord[];
+  }) => Promise<void>;
+  isOfflineMode?: boolean;
 }
 
-type TabType = "categories" | "backgrounds" | "music" | "links" | "account";
+type TabType = "categories" | "backgrounds" | "music" | "links" | "backup" | "account";
 
 export default function SettingsModal({
   isOpen,
@@ -43,6 +65,13 @@ export default function SettingsModal({
   onSaveSettings,
   onAdminLogout,
   onResetVotes,
+  
+  // Backup properties Destructuring
+  promptsHospital = [],
+  promptsCaiNghien = [],
+  records = [],
+  onImportBackup,
+  isOfflineMode = false,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("categories");
 
@@ -59,6 +88,42 @@ export default function SettingsModal({
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [discordUrl, setDiscordUrl] = useState(settings.discordLink || "");
   const [facebookUrl, setFacebookUrl] = useState(settings.facebookLink || "");
+
+  // Backup & Permanent Storage State Parameters
+  const [isPersisted, setIsPersisted] = useState(false);
+  const [dbStats, setDbStats] = useState({ genres: 0, prompts: 0, records: 0 });
+
+  // Query database persistence and counts upon modal display
+  useEffect(() => {
+    if (isOpen) {
+      const checkStatus = async () => {
+        const persisted = await checkStoragePersisted();
+        setIsPersisted(persisted);
+
+        // Fetch actual counts from permanent browser IndexedDB
+        const idbGenres = await getFromIndexedDB<Genre[]>("genres") || [];
+        const idbPrompts = await getFromIndexedDB<Prompt[]>("prompts") || [];
+        const idbRecords = await getFromIndexedDB<RegRecord[]>("records") || [];
+        
+        setDbStats({
+          genres: idbGenres.length,
+          prompts: idbPrompts.length,
+          records: idbRecords.length,
+        });
+      };
+      checkStatus().catch(console.error);
+    }
+  }, [isOpen, activeTab]);
+
+  const handleRequestPersistence = async () => {
+    const granted = await requestPersistentStorage();
+    setIsPersisted(granted);
+    if (granted) {
+      alert("✅ Hệ thống trình duyệt đã kích hoạt chế độ Sao lưu Bền vững thành công! Toàn bộ bệnh án sẽ không bao giờ bị dọn dẹp ngẫu nhiên.");
+    } else {
+      alert("⚠️ Trình duyệt từ chối hoặc không cần cấp quyền bổ sung. Dữ liệu vẫn được lưu trữ bình thường!");
+    }
+  };
 
   // Local state for music display name to prevent IME (Vietnamese typing) focus loss / composition problems
   const [localMusicName, setLocalMusicName] = useState(
@@ -229,6 +294,12 @@ export default function SettingsModal({
             className={`whitespace-nowrap flex-1 px-4 py-2 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === "links" ? "bg-[var(--primary)] text-[var(--bg2)] shadow" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
           >
             🔗 Liên Kết
+          </button>
+          <button
+            onClick={() => setActiveTab("backup")}
+            className={`whitespace-nowrap flex-1 px-4 py-2 text-xs font-bold font-sans rounded-xl cursor-pointer transition ${activeTab === "backup" ? "bg-[var(--primary)] text-[var(--bg2)] shadow" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+          >
+            📂 Sao Lưu & Khôi Phục
           </button>
           <button
             onClick={() => setActiveTab("account")}
@@ -647,6 +718,156 @@ export default function SettingsModal({
                   >
                     💾 Lưu liên kết
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: BACKUP & RECOVERY */}
+          {activeTab === "backup" && (
+            <div className="space-y-4 animate-[in_0.15s_ease-out]">
+              {/* Part 1: persistent storage capability */}
+              <div className="p-4 border border-slate-200 dark:border-slate-805 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                    <span className="text-sm font-bold text-slate-850 dark:text-slate-100 font-sans">
+                      Bảo Mật Lưu Trữ Trình Duyệt
+                    </span>
+                  </div>
+                  {isPersisted ? (
+                    <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-emerald-950 text-emerald-200 border border-emerald-800 rounded-full select-none">
+                      🔒 ĐÃ KIÊN CỐ (PERSISTENT)
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-amber-950 text-amber-200 border border-amber-800 rounded-full select-none">
+                      🔓 TẠM THỜI (TRANSIENT)
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Thiết bị của bé khi sắp hết bộ nhớ có thể tự dọn dẹp LocalStorage/IndexedDB ngẫu nhiên. Hãy kích hoạt chế độ <strong>"Sao Lưu Kiên Cố"</strong> bên dưới để yêu cầu trình duyệt giữ vĩnh viễn dữ liệu hồ sơ bệnh án của Viện.
+                </p>
+                {!isPersisted && (
+                  <button
+                    onClick={handleRequestPersistence}
+                    className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition duration-200 cursor-pointer shadow hover:scale-[1.01]"
+                  >
+                    🔒 Kích Hoạt Chế Độ Sao Lưu Kiên Cố Vĩnh Viễn
+                  </button>
+                )}
+              </div>
+
+              {/* Part 2: Browser counts info */}
+              <div className="p-4 border border-[var(--border)] rounded-2xl bg-[var(--bg2)]/50 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5 text-[var(--primary)]" />
+                  <span className="text-sm font-bold text-slate-850 dark:text-slate-100 font-sans">
+                    Thống Kê Sao Lưu Trình Duyệt (IndexedDB & LocalStorage)
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-black/35 rounded-xl border border-[var(--border)]/70 text-center">
+                    <div className="text-lg font-black text-[var(--primary)]">{Math.max(dbStats.genres, genres.length)}</div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Chuyên khoa</div>
+                  </div>
+                  <div className="p-3 bg-black/35 rounded-xl border border-[var(--border)]/70 text-center">
+                    <div className="text-lg font-black text-purple-400">
+                      {Math.max(dbStats.prompts, promptsHospital.length + promptsCaiNghien.length)}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Bệnh án khoa</div>
+                  </div>
+                  <div className="p-3 bg-black/35 rounded-xl border border-[var(--border)]/70 text-center">
+                    <div className="text-lg font-black text-amber-400">{Math.max(dbStats.records, records.length)}</div>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Sổ Chẩn trị</div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 italic leading-normal">
+                  * Mỗi khi bé thêm chuyên khoa, sửa bài nhạc nền, lưu bệnh án hay bổ sung hồ sơ chẩn đoán, dữ liệu sẽ tự động sao lưu song song (LocalStorage + IndexedDB). Cả khi đám mây bị hết hạn ngạch ngày, dữ liệu vẫn an toàn trên thiết bị này!
+                </p>
+              </div>
+
+              {/* Part 3: Manual Export File & Import file */}
+              <div className="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 space-y-4">
+                <div className="flex items-center gap-2 text-rose-450 font-comfortaa">
+                   <span>📂</span>
+                   <span className="text-sm font-extrabold text-[var(--primary)] font-sans">Xuất/Nhập Bản Sao lưu Tệp Tin Thủ Công</span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Để bảo vệ tuyệt đối bản chẩn đoán, tránh trường hợp bé gỡ cài đặt trình duyệt hoặc đổi thiết bị mới, hãy tải tệp backup (.json) này về máy và khôi phục khi cần thiết.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {/* Export Trigger */}
+                  <button
+                    onClick={() => {
+                      try {
+                        const packageToBackup = {
+                          settings,
+                          genres,
+                          prompts: [...promptsHospital, ...promptsCaiNghien],
+                          records
+                        };
+                        const blob = new Blob([JSON.stringify(packageToBackup, null, 2)], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        const dateFormatted = new Date().toLocaleDateString("vi-VN").replace(/\//g, "-");
+                        link.download = `cothi_vien_tam_than_backup_${dateFormatted}.json`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                        alert("📥 Đã tải xuống tệp sao lưu bệnh viện thành công! Hãy cất giữ tệp này ở nơi an toàn.");
+                      } catch (e: any) {
+                        alert("Lỗi xuất tệp: " + e.message);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-[var(--zone-primary)] hover:bg-[var(--zone-primary-light)] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow hover:scale-[1.01]"
+                  >
+                    <Download className="w-4 h-4" /> Tải Xuất Bản Sao (.JSON)
+                  </button>
+
+                  {/* Import Trigger */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="cothi-backup-file-importer"
+                      accept=".json"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async (event) => {
+                          try {
+                            const content = event.target?.result as string;
+                            const parsed = JSON.parse(content);
+                            if (!parsed.settings || !parsed.genres || !parsed.prompts || !parsed.records) {
+                              throw new Error("Tệp sao lưu thiếu cấu trúc chuẩn của Viện Tâm Thần Cố Thị.");
+                            }
+                            if (onImportBackup) {
+                              await onImportBackup(parsed);
+                            }
+                          } catch (err: any) {
+                            alert("❌ Tệp không hợp lệ hoặc bị hỏng: " + (err.message || err));
+                          }
+                        };
+                        reader.readAsText(file);
+                        e.target.value = "";
+                      }}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => {
+                        if (confirm("⚠️ Chú ý: Việc nạp tệp sao lưu sẽ ghi đè toàn bộ bệnh án và thiết lập hiện hành của bé trên máy này. Bé có chắc chắn muốn tiến hành?")) {
+                          document.getElementById("cothi-backup-file-importer")?.click();
+                        }
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[var(--bg2)] text-[var(--text)] hover:text-white hover:bg-[var(--bg)] text-xs font-bold rounded-xl transition cursor-pointer border border-[var(--border)] hover:scale-[1.01]"
+                    >
+                      <Upload className="w-4 h-4" /> Nạp Nhập Bản Sao (.JSON)
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
