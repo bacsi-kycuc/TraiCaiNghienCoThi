@@ -217,20 +217,11 @@ export default function App() {
     trollMode: "hint" | "media";
   } | null>(null);
 
-  const handlePasswordFail = async (prompt: Prompt) => {
-    // 1. Update error count in DB
-    const newCount = (prompt.errorCount || 0) + 1;
-    const docId = `prompt_${prompt.id}`;
-    const promptDocRef = doc(db, "prompts", docId);
-    
-    try {
-      await setDoc(promptDocRef, { errorCount: newCount }, { merge: true });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `prompts/${docId}`);
-      return; // Stop if DB update fails
-    }
+  const handlePasswordFail = async (prompt: Prompt, newCount: number) => {
+    // Error count is now handled locally in PromptCard via localStorage,
+    // but we use the newCount passed from the component to check TrollPopup triggers.
 
-    // 2. Logic: trigger if errorCount >= maxFailureLimit and errorCount % maxFailureLimit === 0
+    // 2. Logic: trigger if newCount >= maxFailureLimit and newCount % maxFailureLimit === 0
     const limit = prompt.maxFailureLimit || 5;
     if (newCount >= limit && newCount % limit === 0) {
       setActiveTrollConfig({

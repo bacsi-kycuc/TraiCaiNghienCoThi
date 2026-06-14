@@ -11,7 +11,7 @@ interface PromptCardProps {
   onEdit: (prompt: Prompt) => void;
   onTagClick: (tag: string) => void;
   index?: number;
-  onPasswordError?: (prompt: Prompt) => void;
+  onPasswordError?: (prompt: Prompt, count: number) => void;
   onOpenPrompt?: (prompt: Prompt) => void;
   viewMode?: "grid" | "list";
   votes?: number;
@@ -35,6 +35,10 @@ export default function PromptCard({
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [failCount, setFailCount] = useState(() => {
+     const storedCount = localStorage.getItem(`failCount_prompt_${prompt.id}`);
+     return storedCount ? parseInt(storedCount) : 0;
+  });
   const [showSecondaryHintPopup, setShowSecondaryHintPopup] = useState(false);
   const [ripples, setRipples] = useState<
     { id: number; x: number; y: number; size: number }[]
@@ -59,6 +63,10 @@ export default function PromptCard({
       setChallengeOpen(false);
       setShowSecondaryHintPopup(false);
       setErrorMsg("");
+      // Reset local failure count
+      localStorage.removeItem(`failCount_prompt_${prompt.id}`);
+      setFailCount(0);
+      
       if (onOpenPrompt) {
         onOpenPrompt(prompt);
       }
@@ -67,12 +75,24 @@ export default function PromptCard({
       // Open link in a new tab
       window.open(prompt.url, "_blank", "noreferrer,noopener");
     } else {
+      // Get current local count
+      const storedCount = localStorage.getItem(`failCount_prompt_${prompt.id}`);
+      const newCount = (storedCount ? parseInt(storedCount) : 0) + 1;
+      localStorage.setItem(`failCount_prompt_${prompt.id}`, newCount.toString());
+      setFailCount(newCount);
+      
+      setErrorMsg(`❌ Bé hư đã sai ${newCount} lần!`);
+
       // Trigger troll alarm
       if (onPasswordError) {
-        onPasswordError(prompt);
+        onPasswordError(prompt, newCount);
       }
-      const newCount = (prompt.errorCount || 0) + 1;
-      setErrorMsg(`❌ Bé hư đã sai ${newCount} lần!`);
+
+      // Logic: trigger if newCount >= maxFailureLimit and newCount % maxFailureLimit === 0
+      const limit = prompt.maxFailureLimit || 5;
+      if (newCount >= limit && newCount % limit === 0) {
+        setShowSecondaryHintPopup(true);
+      }
     }
   };
 
@@ -299,7 +319,7 @@ export default function PromptCard({
               <span className="text-sm animate-bounce">💡</span>
             </div>
             <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
-              Gợi ý bổ sung (Sai lần {prompt.errorCount || 0})!
+              Gợi ý bổ sung (Sai lần {failCount})!
             </h5>
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1 w-full max-w-[280px]">
               <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
@@ -502,7 +522,7 @@ export default function PromptCard({
             <span className="text-sm animate-bounce">💡</span>
           </div>
           <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
-            Gợi ý bổ sung (Sai lần {prompt.errorCount || 0})!
+            Gợi ý bổ sung (Sai lần {failCount})!
           </h5>
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1.5 w-full max-w-[200px]">
             <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
