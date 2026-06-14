@@ -10,6 +10,61 @@ interface TrollPopupProps {
   trollMode: "hint" | "media";
 }
 
+// Robust helper to determine if a URL represents a video format
+const isVideoUrl = (url?: string): boolean => {
+  if (!url) return false;
+  const lowercase = url.toLowerCase();
+
+  // YouTube check
+  if (lowercase.includes("youtube.com") || lowercase.includes("youtu.be")) {
+    return true;
+  }
+
+  // Strip query parameters and hash anchors, then match common formats smoothly
+  const cleanUrl = lowercase.split("?")[0].split("#")[0];
+  const videoExtensions = [".mp4", ".mov", ".webm", ".ogg", ".m4v", ".3gp", ".avi", ".mkv"];
+  return videoExtensions.some(ext => cleanUrl.endsWith(ext));
+};
+
+// Precise YouTube link parser for embedded iframe view
+const getYouTubeEmbedUrl = (url: string): string | null => {
+  try {
+    const lowercase = url.toLowerCase();
+    if (!lowercase.includes("youtube.com") && !lowercase.includes("youtu.be")) {
+      return null;
+    }
+
+    const parsed = new URL(url);
+    let id = "";
+
+    if (parsed.hostname.includes("youtube.com")) {
+      const v = parsed.searchParams.get("v");
+      if (v) {
+        id = v;
+      } else {
+        const parts = parsed.pathname.split("/");
+        if (parts[1] === "embed" && parts[2]) {
+          id = parts[2];
+        } else if (parts[1] === "v" && parts[2]) {
+          id = parts[2];
+        }
+      }
+    } else if (parsed.hostname.includes("youtu.be")) {
+      id = parsed.pathname.slice(1);
+    }
+
+    if (id) {
+      return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=1&modestbranding=1&rel=0`;
+    }
+  } catch {
+    const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+    if (ytMatch && ytMatch[1]) {
+      return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}&controls=1&modestbranding=1&rel=0`;
+    }
+  }
+  return null;
+};
+
 export default function TrollPopup({
   isOpen,
   onClose,
@@ -19,7 +74,7 @@ export default function TrollPopup({
 }: TrollPopupProps) {
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(onClose, 10000); // 10 seconds
+      const timer = setTimeout(onClose, 15000); // Expanded slightly to 15 seconds so they can view video longer
       return () => clearTimeout(timer);
     }
   }, [isOpen, onClose]);
@@ -42,7 +97,7 @@ export default function TrollPopup({
         >
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 text-slate-400 hover:text-rose-500 cursor-pointer p-1 transition-colors"
+            className="absolute top-3 right-3 text-slate-400 hover:text-rose-500 cursor-pointer p-1 transition-colors z-10"
           >
             <X className="w-5 h-5" />
           </button>
@@ -61,25 +116,52 @@ export default function TrollPopup({
               <h3 className="text-lg font-bold text-rose-500 mb-3 flex items-center justify-center gap-2">
                 <span>🚨</span> Cảnh báo!
               </h3>
-              {mediaUrl &&
-              (mediaUrl.toLowerCase().endsWith(".mp4") ||
-                mediaUrl.toLowerCase().endsWith(".mov") ||
-                mediaUrl.toLowerCase().endsWith(".webm") ||
-                mediaUrl.toLowerCase().endsWith(".ogg")) ? (
-                <video
-                  src={mediaUrl}
-                  autoPlay
-                  loop
-                  playsInline
-                  className="w-full rounded-2xl"
-                />
+              {mediaUrl ? (
+                (() => {
+                  const isVid = isVideoUrl(mediaUrl);
+                  const ytEmbed = getYouTubeEmbedUrl(mediaUrl);
+
+                  if (ytEmbed) {
+                    return (
+                      <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-slate-700 bg-black">
+                        <iframe
+                          src={ytEmbed}
+                          title="Troll Video"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          className="w-full h-full"
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (isVid) {
+                    return (
+                      <video
+                        src={mediaUrl}
+                        autoPlay
+                        loop
+                        playsInline
+                        muted
+                        controls
+                        className="w-full rounded-2xl overflow-hidden shadow-inner border border-slate-200 dark:border-slate-700 bg-black"
+                      />
+                    );
+                  }
+
+                  // Default Image tag
+                  return (
+                    <img
+                      src={mediaUrl}
+                      alt="Troll Content"
+                      className="w-full rounded-2xl object-cover max-h-60 shadow-inner border border-slate-200 dark:border-slate-700 bg-black"
+                      referrerPolicy="no-referrer"
+                    />
+                  );
+                })()
               ) : (
-                <img
-                  src={mediaUrl}
-                  alt="Troll Media"
-                  className="w-full rounded-2xl"
-                  referrerPolicy="no-referrer"
-                />
+                <p className="text-sm text-slate-400">Không tìm thấy phương tiện troller.</p>
               )}
             </div>
           )}
