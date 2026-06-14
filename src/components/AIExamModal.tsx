@@ -320,7 +320,7 @@ export default function AIExamModal({
                             </span>
                             <input
                               type="text"
-                              value={name}
+                              value={name || ""}
                               onChange={(e) => setName(e.target.value)}
                               placeholder="Ví dụ: Người Đẹp Hoang Tưởng..."
                               className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/30 font-comfortaa transition-all focus:ring-1 focus:ring-[#E11D48]/30"
@@ -338,7 +338,7 @@ export default function AIExamModal({
                               <Calendar className="w-4 h-4" />
                             </span>
                             <select
-                              value={age}
+                              value={age || ""}
                               onChange={(e) => setAge(e.target.value)}
                               className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-slate-200 transition-all cursor-pointer font-sans"
                             >
@@ -377,7 +377,7 @@ export default function AIExamModal({
                             <Stethoscope className="w-4 h-4" />
                           </span>
                           <select
-                            value={selectedGenre}
+                            value={selectedGenre || ""}
                             onChange={(e) => setSelectedGenre(e.target.value)}
                             className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white transition-all cursor-pointer font-comfortaa font-bold"
                           >
@@ -448,7 +448,7 @@ export default function AIExamModal({
                           </span>
                           <textarea
                             rows={3}
-                            value={note}
+                            value={note || ""}
                             onChange={(e) => setNote(e.target.value)}
                             placeholder="Ghi nhận cụ thể, ví dụ: mê bác sĩ y khoa, thèm cưng chiều vuốt tóc, cuồng tự ngược đau thương..."
                             className="w-full pl-10 pr-4 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/30 font-sans transition-all resize-none leading-relaxed focus:ring-1 focus:ring-[#E11D48]/30"
@@ -484,7 +484,7 @@ export default function AIExamModal({
                   <div className="relative">
                     <input
                       type="text"
-                      value={searchQuery}
+                      value={searchQuery || ""}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Tìm kiếm theo họ tên, triệu chứng hoặc khoa chẩn đoán..."
                       className="w-full pl-4 pr-12 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/35 font-comfortaa"

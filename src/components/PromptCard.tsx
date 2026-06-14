@@ -16,6 +16,9 @@ interface PromptCardProps {
   viewMode?: "grid" | "list";
   votes?: number;
   onVote?: (id: string) => void;
+  isUnlocked?: boolean;
+  onUnlock?: (promptId: string) => void;
+  onLock?: (promptId: string) => void;
 }
 
 export default function PromptCard({
@@ -29,11 +32,13 @@ export default function PromptCard({
   viewMode = "grid",
   votes = 0,
   onVote,
+  isUnlocked = false,
+  onUnlock,
+  onLock,
 }: PromptCardProps) {
   const [passwordInput, setPasswordInput] = useState("");
   const [showCardPassword, setShowCardPassword] = useState(false);
   const [challengeOpen, setChallengeOpen] = useState(false);
-  const [unlocked, setUnlocked] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [failCount, setFailCount] = useState(() => {
      const storedCount = localStorage.getItem(`failCount_prompt_${prompt.id}`);
@@ -47,19 +52,28 @@ export default function PromptCard({
   const hasPassword = !!prompt.password;
 
   const handleOpenPrompt = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (hasPassword && !unlocked && !isAdmin) {
+    if (hasPassword && !isUnlocked && !isAdmin) {
       e.preventDefault();
       setChallengeOpen(true);
     } else {
       if (onOpenPrompt) {
         onOpenPrompt(prompt);
       }
+      // If we clicked on the already unlocked card, we want to immediately clear its unlocked state after starting the navigation,
+      // so when they return it's locked again.
+      if (onLock && hasPassword && !isAdmin) {
+        setTimeout(() => {
+          onLock(prompt.id.toString());
+        }, 800);
+      }
     }
   };
 
   const handleVerifyPassword = () => {
     if (passwordInput === prompt.password) {
-      setUnlocked(true);
+      if (onUnlock) {
+        onUnlock(prompt.id.toString());
+      }
       setChallengeOpen(false);
       setShowSecondaryHintPopup(false);
       setErrorMsg("");
@@ -74,6 +88,14 @@ export default function PromptCard({
       window.dispatchEvent(new CustomEvent("celebrate-confetti"));
       // Open link in a new tab
       window.open(prompt.url, "_blank", "noreferrer,noopener");
+
+      // Auto-lock again after 1 second so next click requires password again (or when they return)
+      if (onLock) {
+        setTimeout(() => {
+          onLock(prompt.id.toString());
+          setPasswordInput("");
+        }, 1000);
+      }
     } else {
       // Get current local count
       const storedCount = localStorage.getItem(`failCount_prompt_${prompt.id}`);
@@ -172,7 +194,7 @@ export default function PromptCard({
                   className="text-amber-500 animate-pulse shrink-0"
                   title="Có mật khẩu bảo vệ"
                 >
-                  {unlocked ? (
+                  {isUnlocked ? (
                     <Unlock className="w-3.5 h-3.5" />
                   ) : (
                     <Lock className="w-3.5 h-3.5" />
@@ -270,7 +292,7 @@ export default function PromptCard({
                 <input
                   type={showCardPassword ? "text" : "password"}
                   placeholder="Nhập mã mở..."
-                  value={passwordInput}
+                  value={passwordInput || ""}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
                   className="px-2.5 pr-8 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
@@ -303,7 +325,14 @@ export default function PromptCard({
                   Mở Khóa
                 </button>
                 <button
-                  onClick={() => setChallengeOpen(false)}
+                  onClick={() => {
+                    setChallengeOpen(false);
+                    setPasswordInput("");
+                    setErrorMsg("");
+                    if (onLock) {
+                      onLock(prompt.id.toString());
+                    }
+                  }}
                   className="bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] px-2.5 py-1 rounded-md font-medium transition cursor-pointer"
                 >
                   Hủy
@@ -321,10 +350,30 @@ export default function PromptCard({
             <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
               Gợi ý bổ sung (Sai lần {failCount})!
             </h5>
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1 w-full max-w-[280px]">
-              <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
-                "Đang kiểm tra dữ liệu..."
-              </p>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1 w-full max-w-[280px] flex flex-col items-center justify-center overflow-hidden">
+              {prompt.trollMode === 'media' && prompt.mediaUrl ? (
+                prompt.mediaUrl.startsWith("data:video/") || prompt.mediaUrl.includes(".mp4") ? (
+                  <video
+                    src={prompt.mediaUrl}
+                    controls
+                    autoPlay
+                    muted
+                    loop
+                    className="max-h-[120px] rounded-lg w-full object-contain border border-amber-500/30 shadow-md"
+                  />
+                ) : (
+                  <img
+                    src={prompt.mediaUrl}
+                    alt="Troll helper modal illustration"
+                    className="max-h-[120px] rounded-lg w-full object-contain border border-amber-500/30 shadow-md"
+                    referrerPolicy="no-referrer"
+                  />
+                )
+              ) : (
+                <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
+                  "{prompt.hintText || "Hãy suy nghĩ thêm chút nữa nhé!"}"
+                </p>
+              )}
             </div>
             <button
               onClick={() => setShowSecondaryHintPopup(false)}
@@ -392,7 +441,7 @@ export default function PromptCard({
                 className="text-amber-500 animate-pulse ml-1"
                 title="Có mật khẩu bảo vệ"
               >
-                {unlocked ? (
+                {isUnlocked ? (
                   <Unlock className="w-4 h-4" />
                 ) : (
                   <Lock className="w-4 h-4" />
@@ -478,7 +527,7 @@ export default function PromptCard({
             <input
               type={showCardPassword ? "text" : "password"}
               placeholder="Nhập mã mở khóa..."
-              value={passwordInput}
+              value={passwordInput || ""}
               onChange={(e) => setPasswordInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
               className="px-3 pr-9 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs text-center border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
@@ -507,7 +556,14 @@ export default function PromptCard({
               Mở Khóa
             </button>
             <button
-              onClick={() => setChallengeOpen(false)}
+              onClick={() => {
+                setChallengeOpen(false);
+                setPasswordInput("");
+                setErrorMsg("");
+                if (onLock) {
+                  onLock(prompt.id.toString());
+                }
+              }}
               className="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-3 py-1 rounded-md font-medium transition cursor-pointer"
             >
               Hủy
@@ -524,10 +580,30 @@ export default function PromptCard({
           <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
             Gợi ý bổ sung (Sai lần {failCount})!
           </h5>
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1.5 w-full max-w-[200px]">
-            <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
-              "Đang kiểm tra dữ liệu..."
-            </p>
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1.5 w-full max-w-[200px] flex flex-col items-center justify-center overflow-hidden">
+            {prompt.trollMode === 'media' && prompt.mediaUrl ? (
+              prompt.mediaUrl.startsWith("data:video/") || prompt.mediaUrl.includes(".mp4") ? (
+                <video
+                  src={prompt.mediaUrl}
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                  className="max-h-[120px] rounded-lg w-full object-contain border border-amber-500/30 shadow-md"
+                />
+              ) : (
+                <img
+                  src={prompt.mediaUrl}
+                  alt="Troll helper modal illustration"
+                  className="max-h-[120px] rounded-lg w-full object-contain border border-amber-500/30 shadow-md"
+                  referrerPolicy="no-referrer"
+                />
+              )
+            ) : (
+              <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
+                "{prompt.hintText || "Hãy suy nghĩ thêm chút nữa nhé!"}"
+              </p>
+            )}
           </div>
           <button
             onClick={() => setShowSecondaryHintPopup(false)}

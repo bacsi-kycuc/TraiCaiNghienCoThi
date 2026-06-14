@@ -104,6 +104,11 @@ export default function PromptModal({
       return;
     }
 
+    if (enablePassword && !password.trim()) {
+      alert("⚠️ Bạn đã kích hoạt bảo mật nhưng chưa nhập Mật khẩu khóa!");
+      return;
+    }
+
     onSave(
       {
         id: editingPrompt?.id,
@@ -383,6 +388,11 @@ export default function PromptModal({
                         onChange={(e) => {
                            const file = e.target.files?.[0];
                            if(file) {
+                             if (file.size > 800 * 1024) {
+                               alert("⚠️ Kích thước file vượt quá 800KB! Vui lòng chọn file ảnh/video nhỏ gọn hơn (dưới 800KB) để đảm bảo lưu trữ thành công trên hệ thống.");
+                               e.target.value = "";
+                               return;
+                             }
                              const reader = new FileReader();
                              reader.onload = (ev) => {
                                setMediaUrl(ev.target?.result as string);

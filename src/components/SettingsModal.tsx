@@ -490,7 +490,7 @@ export default function SettingsModal({
                 <input
                   type="text"
                   placeholder="Nhập tên bài hát theo ý thích..."
-                  value={localMusicName}
+                  value={localMusicName || ""}
                   onChange={(e) => {
                     setLocalMusicName(e.target.value);
                   }}
@@ -621,7 +621,7 @@ export default function SettingsModal({
                   <input
                     type="url"
                     placeholder="https://discord.gg/..."
-                    value={discordUrl}
+                    value={discordUrl || ""}
                     onChange={(e) => setDiscordUrl(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
                   />
@@ -634,7 +634,7 @@ export default function SettingsModal({
                   <input
                     type="url"
                     placeholder="https://facebook.com/..."
-                    value={facebookUrl}
+                    value={facebookUrl || ""}
                     onChange={(e) => setFacebookUrl(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
                   />

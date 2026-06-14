@@ -233,6 +233,70 @@ export default function App() {
     }
   };
 
+  const [unlockedPromptIds, setUnlockedPromptIds] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = sessionStorage.getItem("unlockedPromptIds");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleUnlockPrompt = (id: string) => {
+    setUnlockedPromptIds((prev) => {
+      const updated = { ...prev, [id]: true };
+      sessionStorage.setItem("unlockedPromptIds", JSON.stringify(updated));
+      localStorage.setItem(`unlocked_prompt_${id}`, "true");
+      return updated;
+    });
+  };
+
+  const handleLockPrompt = (id: string) => {
+    setUnlockedPromptIds((prev) => {
+      const updated = { ...prev, [id]: false };
+      sessionStorage.setItem("unlockedPromptIds", JSON.stringify(updated));
+      localStorage.removeItem(`unlocked_prompt_${id}`);
+      return updated;
+    });
+  };
+
+  // --- Automatic security lock cleanup on tab switch, window focus, reload, and page load ---
+  useEffect(() => {
+    const clearAllUnlockTraces = () => {
+      setUnlockedPromptIds({});
+      sessionStorage.removeItem("unlockedPromptIds");
+      
+      // Clean matching localStorage or sessionStorage keys for individual prompts
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("unlocked_prompt_")) {
+          localStorage.removeItem(key);
+          i--; // Adjust index since element was removed
+        }
+      }
+    };
+
+    // Clean instantly on initial mount/reload to enforce immediate encryption
+    clearAllUnlockTraces();
+
+    const handleVisibilityChange = () => {
+      // Clear all active unlocks when tab is hidden or user switches focus
+      clearAllUnlockTraces();
+    };
+
+    const handleWindowBlur = () => {
+      clearAllUnlockTraces();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, []);
+
   const handleOpenPrompt = async (prompt: Prompt) => {
     try {
       const docId = `prompt_${prompt.id}`;
@@ -273,16 +337,25 @@ export default function App() {
     document.documentElement.classList.add("dark-mode");
     document.documentElement.classList.add("dark");
 
-    // 2. Auth Session verification
+    // 2. Auth Session verification (Hybrid sessionStorage & localStorage)
     const adminLogged = localStorage.getItem("adminLogged") === "true";
+    const adminLoggedSession = sessionStorage.getItem("adminLoggedSession") === "true";
     const loginTime = parseInt(localStorage.getItem("adminLoginTime") || "0");
-    const isValidSession =
-      adminLogged && Date.now() - loginTime < 24 * 60 * 60 * 1000;
-    if (isValidSession) {
+    const ADMIN_SESSION_TIMEOUT = 10 * 60 * 60 * 1000; // 10 hours in ms
+    const isWithinTimeLimit = Date.now() - loginTime < ADMIN_SESSION_TIMEOUT;
+
+    // A session is valid if localStorage says so and is within the 10-hour limit.
+    // We combine sessionStorage to track the active tab session and prevent state loss on reload.
+    if (adminLogged && isWithinTimeLimit) {
       setIsAdmin(true);
+      // Sync into sessionStorage to uphold the reload-resiliant active session state
+      sessionStorage.setItem("adminLoggedSession", "true");
     } else {
+      setIsAdmin(false);
       localStorage.removeItem("adminLogged");
       localStorage.removeItem("adminLoginTime");
+      localStorage.removeItem("adminId");
+      sessionStorage.removeItem("adminLoggedSession");
     }
 
     // 3. Test Connection on boot (as required by Firestore validation)
@@ -568,6 +641,7 @@ export default function App() {
         localStorage.setItem("adminLogged", "true");
         localStorage.setItem("adminId", idInput);
         localStorage.setItem("adminLoginTime", Date.now().toString());
+        sessionStorage.setItem("adminLoggedSession", "true");
 
         setShowLoginModal(false);
         setAdminId("");
@@ -596,6 +670,7 @@ export default function App() {
         localStorage.setItem("adminLogged", "true");
         localStorage.setItem("adminId", idInput);
         localStorage.setItem("adminLoginTime", Date.now().toString());
+        sessionStorage.setItem("adminLoggedSession", "true");
 
         setShowLoginModal(false);
         setAdminId("");
@@ -618,10 +693,44 @@ export default function App() {
     localStorage.removeItem("adminLogged");
     localStorage.removeItem("adminId");
     localStorage.removeItem("adminLoginTime");
+    sessionStorage.removeItem("adminLoggedSession");
+
+    // Enforce lock containment upon Admin logout as well
+    setUnlockedPromptIds({});
+    sessionStorage.removeItem("unlockedPromptIds");
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("unlocked_prompt_")) {
+        localStorage.removeItem(key);
+        i--;
+      }
+    }
+
     setShowLogoutConfirm(false);
     setCurrentScreen("welcome");
     setToastMessage("Đã đăng xuất!");
   };
+
+  // --- Active Admin Session Expiration Check Timer ---
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const checkSessionExpiry = () => {
+      const loginTime = parseInt(localStorage.getItem("adminLoginTime") || "0");
+      const ADMIN_SESSION_TIMEOUT = 10 * 60 * 60 * 1000; // 10 Hours in milliseconds
+      if (Date.now() - loginTime >= ADMIN_SESSION_TIMEOUT) {
+        handleAdminLogout();
+        alert("🚨 Phiên làm việc của Admin đã hết hạn (10 giờ)! Hệ thống đã tự động đăng xuất để đảm bảo bảo mật.");
+      }
+    };
+
+    // Check expiration immediately on focus or status change
+    checkSessionExpiry();
+
+    // Check periodically every 10 seconds
+    const interval = setInterval(checkSessionExpiry, 10000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   const handleResetVotes = () => {
     localStorage.removeItem("char_votes");
@@ -779,13 +888,17 @@ export default function App() {
     const finalId = id || Date.now();
     const docId = `prompt_${finalId}`;
 
+    const existingPrompt = [...promptsHospital, ...promptsCaiNghien].find(
+      (p) => p.id === finalId
+    );
+
     const promptDoc: Prompt = {
       ...data,
       id: finalId,
       zone: targetZone,
-      createdAt: data.createdAt || new Date().toISOString(),
+      createdAt: existingPrompt?.createdAt || data.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      viewCount: (payload as any).viewCount || 0,
+      viewCount: existingPrompt?.viewCount || (payload as any).viewCount || 0,
     };
 
     try {
@@ -1063,12 +1176,12 @@ export default function App() {
                       <input
                         type="text"
                         placeholder="Tìm kiếm triệu chứng hoặc điều dưỡng..."
-                        value={searchFilter}
+                        value={searchFilter || ""}
                         onChange={(e) => setSearchFilter(e.target.value)}
                         className="w-full sm:flex-1 px-4 py-2.5 bg-[var(--bg2)]/80 text-[var(--text)] border-2 border-[var(--zone-border)] rounded-2xl outline-none focus:border-[var(--zone-primary)] text-sm transition"
                       />
                       <select
-                        value={sortOrder}
+                        value={sortOrder || "newest"}
                         onChange={(e) => setSortOrder(e.target.value as any)}
                         className="w-full sm:w-auto px-4 py-2.5 bg-[var(--bg2)]/80 text-[var(--text)] border-2 border-[var(--zone-border)] rounded-2xl outline-none focus:border-[var(--zone-primary)] text-sm transition cursor-pointer appearance-none"
                       >
@@ -1167,6 +1280,9 @@ export default function App() {
                             }}
                             onPasswordError={handlePasswordFail}
                             onOpenPrompt={handleOpenPrompt}
+                            isUnlocked={unlockedPromptIds[p.id.toString()] || false}
+                            onUnlock={handleUnlockPrompt}
+                            onLock={handleLockPrompt}
                             viewMode={viewMode}
                             votes={votesData[p.id.toString()] || 0}
                             onVote={handleVote}
@@ -1246,7 +1362,7 @@ export default function App() {
                 <input
                   type="text"
                   placeholder="Nhập mã id..."
-                  value={adminId}
+                  value={adminId || ""}
                   onChange={(e) => setAdminId(e.target.value)}
                   className="w-full px-3 py-2 bg-black/50 border border-emerald-500/25 focus:border-emerald-400 rounded-xl outline-none text-xs text-white placeholder-slate-600"
                 />
@@ -1260,7 +1376,7 @@ export default function App() {
                   <input
                     type={showPassword ? "text" : "password"}
                     placeholder="Nhập khẩu lệnh..."
-                    value={adminPassword}
+                    value={adminPassword || ""}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
                     className="w-full pl-3 pr-10 py-2 bg-black/50 border border-emerald-500/25 focus:border-emerald-400 rounded-xl outline-none text-xs text-white placeholder-slate-600 focus:ring-1 focus:ring-emerald-400"
