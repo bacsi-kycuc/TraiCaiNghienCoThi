@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { X, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface TrollPopupProps {
@@ -9,6 +9,12 @@ interface TrollPopupProps {
   mediaUrl?: string;
   trollMode: "hint" | "media";
 }
+
+// Check if string is a valid web link format
+const isValidUrl = (url?: string): boolean => {
+  if (!url) return false;
+  return url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/");
+};
 
 // Robust helper to determine if a URL represents a video format
 const isVideoUrl = (url?: string): boolean => {
@@ -72,12 +78,15 @@ export default function TrollPopup({
   mediaUrl,
   trollMode,
 }: TrollPopupProps) {
+  const [imgError, setImgError] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
+      setImgError(false);
       const timer = setTimeout(onClose, 15000); // Expanded slightly to 15 seconds so they can view video longer
       return () => clearTimeout(timer);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, mediaUrl]);
 
   if (!isOpen) return null;
 
@@ -107,7 +116,7 @@ export default function TrollPopup({
               <h3 className="text-lg font-bold text-amber-600 mb-3 flex items-center justify-center gap-2">
                 <span>💡</span> Gợi ý nhỏ
               </h3>
-              <p className="text-sm text-slate-800 dark:text-slate-200 font-medium">
+              <p className="text-sm text-slate-800 dark:text-slate-200 font-medium font-sans">
                 {hintText}
               </p>
             </div>
@@ -116,7 +125,7 @@ export default function TrollPopup({
               <h3 className="text-lg font-bold text-rose-500 mb-3 flex items-center justify-center gap-2">
                 <span>🚨</span> Cảnh báo!
               </h3>
-              {mediaUrl ? (
+              {mediaUrl && isValidUrl(mediaUrl) && !imgError ? (
                 (() => {
                   const isVid = isVideoUrl(mediaUrl);
                   const ytEmbed = getYouTubeEmbedUrl(mediaUrl);
@@ -154,14 +163,31 @@ export default function TrollPopup({
                   return (
                     <img
                       src={mediaUrl}
-                      alt="Troll Content"
+                      alt="Cảnh báo troller"
+                      onError={() => setImgError(true)}
                       className="w-full rounded-2xl object-cover max-h-60 shadow-inner border border-slate-200 dark:border-slate-700 bg-black"
                       referrerPolicy="no-referrer"
                     />
                   );
                 })()
               ) : (
-                <p className="text-sm text-slate-400">Không tìm thấy phương tiện troller.</p>
+                <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 text-center gap-3">
+                  <AlertCircle className="w-12 h-12 text-rose-500 animate-bounce" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Phát hiện hoang tưởng - Hồ sơ bệnh án được bảo mật nghiêm ngặt!
+                  </p>
+                </div>
+              )}
+
+              {hintText && (
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl text-left">
+                  <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <span>💡</span> Gợi ý giải mã bệnh án:
+                  </p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                    {hintText}
+                  </p>
+                </div>
               )}
             </div>
           )}
