@@ -18,10 +18,14 @@ export interface Prompt {
   createdAt?: string;
   updatedAt?: string;
   viewCount?: number;
-  passwordFailLimit?: number;
-  passwordFailGifUrl?: string;
-  passwordFailSoundUrl?: string;
-  passwordFailSecondaryHint?: string;
+  
+  // Troll mechanism
+  errorCount?: number;
+  lastOpenedDate?: string;
+  maxFailureLimit?: number;
+  hintText?: string;
+  mediaUrl?: string;
+  trollMode?: 'hint' | 'media';
 }
 
 export interface RegRecord {
@@ -47,8 +51,4 @@ export interface Settings {
   musicName: string;
   musicData: string;
   musicUrl: string;
-  // Customizable Password Failure Troll Attack
-  passwordFailLimit?: number;
-  passwordFailGifUrl?: string;
-  passwordFailSoundUrl?: string;
 }

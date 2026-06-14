@@ -27,6 +27,7 @@ interface SettingsModalProps {
   settings: Settings;
   onSaveSettings: (key: keyof Settings, value: any) => void;
   onAdminLogout?: () => void;
+  onResetVotes?: () => void;
 }
 
 type TabType = "categories" | "backgrounds" | "music" | "links" | "account";
@@ -41,6 +42,7 @@ export default function SettingsModal({
   settings,
   onSaveSettings,
   onAdminLogout,
+  onResetVotes,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("categories");
 
@@ -250,7 +252,7 @@ export default function SettingsModal({
                     <input
                       type="text"
                       placeholder="Nhập tên khoa mới..."
-                      value={newGenreName}
+                      value={newGenreName || ""}
                       onChange={(e) => setNewGenreName(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
                     />
@@ -263,7 +265,7 @@ export default function SettingsModal({
                       type="text"
                       placeholder="🏷️"
                       maxLength={4}
-                      value={newGenreIcon}
+                      value={newGenreIcon || ""}
                       onChange={(e) => setNewGenreIcon(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-center placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
                     />
@@ -277,7 +279,7 @@ export default function SettingsModal({
                   <textarea
                     rows={2}
                     placeholder="Mô tả tóm tắt..."
-                    value={newGenreDescription}
+                    value={newGenreDescription || ""}
                     onChange={(e) => setNewGenreDescription(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs resize-none focus:ring-1 focus:ring-[var(--zone-primary)] py-2"
                   />
@@ -293,6 +295,7 @@ export default function SettingsModal({
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={handleSaveGenre}
                     className="bg-[var(--zone-primary)] hover:bg-[var(--zone-primary-light)] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer shadow flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-95"
                   >
@@ -569,7 +572,7 @@ export default function SettingsModal({
                   <input
                     type="url"
                     placeholder="https://youtube.com/... hoặc link âm thanh"
-                    value={youtubeUrl}
+                    value={youtubeUrl || ""}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                     className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none text-xs focus:ring-1 focus:ring-[var(--zone-primary)]"
                   />
@@ -664,14 +667,24 @@ export default function SettingsModal({
                     Quyền hạn: Chánh văn phòng Admin
                   </p>
                 </div>
-                <div className="pt-2">
+                <div className="pt-2 flex gap-2 justify-center">
+                  <button
+                    onClick={() => {
+                      if (onResetVotes) {
+                        onResetVotes();
+                      }
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition duration-200 shadow hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    🔄 Reset tất cả lượt vote
+                  </button>
                   <button
                     onClick={() => {
                       if (onAdminLogout) {
                         onAdminLogout();
                       }
                     }}
-                    className="mx-auto w-full max-w-[200px] bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition duration-200 shadow hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition duration-200 shadow hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" /> Đăng Xuất Admin
                   </button>

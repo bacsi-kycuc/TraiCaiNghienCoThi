@@ -40,6 +40,7 @@ import Toast from "./components/Toast";
 import RandomRollBanner from "./components/RandomRollBanner";
 import ConfettiCelebration from "./components/ConfettiCelebration";
 import FavoriteLeaderBanner from "./components/FavoriteLeaderBanner";
+import TrollPopup from "./components/TrollPopup";
 
 // Default mock values
 import {
@@ -105,8 +106,8 @@ export default function App() {
     allPrompts.forEach((p) => {
       const key = p.id.toString();
       if (localVotes[key] === undefined) {
-        // Sinh ngẫu nhiên lượng phiếu bầu mượt mà ban đầu cho bác sĩ/điều dưỡng chưa có vote
-        localVotes[key] = ((p.id * 17) % 89) + 15;
+        // Khởi tạo lượt phiếu bầu ban đầu bằng 0 cho bác sĩ/điều dưỡng mới
+        localVotes[key] = 0;
         hasNew = true;
       }
     });
@@ -171,11 +172,6 @@ export default function App() {
     musicName: "Lullaby of Co Thi (Mặc định)",
     musicData: "",
     musicUrl: "",
-    passwordFailLimit: 5,
-    passwordFailGifUrl:
-      "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3FjNDJqNHBlOHI1b3Rnbm1reTV6ZGFxZHl6dHF6amNmaXloZHFyNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ju7l5y9osyXQQ/giphy.gif",
-    passwordFailSoundUrl:
-      "https://assets.mixkit.co/active_storage/sfx/951/951-84.wav",
   });
 
   // --- Active Filters ---
@@ -213,37 +209,36 @@ export default function App() {
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null);
   const [toastMessage, setToastMessage] = useState("");
 
-  // --- Password failures / Troll popup states ---
-  const [showTrollOverlay, setShowTrollOverlay] = useState(false);
-  const [activeTrollMedia, setActiveTrollMedia] = useState<string>("");
-  const [trollTimeLeft, setTrollTimeLeft] = useState(8000); // 8000ms = 8s
-  const TROLL_MAX_DURATION = 8000;
+  // --- Troll popup states ---
+  const [showTrollPopup, setShowTrollPopup] = useState(false);
+  const [activeTrollConfig, setActiveTrollConfig] = useState<{
+    hintText?: string;
+    mediaUrl?: string;
+    trollMode: "hint" | "media";
+  } | null>(null);
 
-  // Smooth millisecond-based countdown timer for the troll overlay progress bar
-  useEffect(() => {
-    if (showTrollOverlay) {
-      setTrollTimeLeft(8000);
-      const startTime = Date.now();
-      const endTime = startTime + 8000;
-
-      const interval = setInterval(() => {
-        const remaining = Math.max(0, endTime - Date.now());
-        setTrollTimeLeft(remaining);
-        if (remaining <= 0) {
-          clearInterval(interval);
-        }
-      }, 50);
-
-      return () => clearInterval(interval);
+  const handlePasswordFail = async (prompt: Prompt) => {
+    // 1. Update error count in DB
+    const newCount = (prompt.errorCount || 0) + 1;
+    const docId = `prompt_${prompt.id}`;
+    const promptDocRef = doc(db, "prompts", docId);
+    
+    try {
+      await setDoc(promptDocRef, { errorCount: newCount }, { merge: true });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `prompts/${docId}`);
+      return; // Stop if DB update fails
     }
-  }, [showTrollOverlay]);
 
-  const handlePasswordFail = (triggerAlarm: boolean, customMedia?: string) => {
-    if (triggerAlarm) {
-      const mediaSource = customMedia || settings.passwordFailGifUrl;
-      if (!mediaSource) return; // Silent if no media source is provided anywhere
-      setActiveTrollMedia(customMedia || "");
-      setShowTrollOverlay(true);
+    // 2. Logic: trigger if errorCount >= maxFailureLimit and errorCount % maxFailureLimit === 0
+    const limit = prompt.maxFailureLimit || 5;
+    if (newCount >= limit && newCount % limit === 0) {
+      setActiveTrollConfig({
+        hintText: prompt.hintText,
+        mediaUrl: prompt.mediaUrl,
+        trollMode: prompt.trollMode || "hint",
+      });
+      setShowTrollPopup(true);
     }
   };
 
@@ -251,7 +246,9 @@ export default function App() {
     try {
       const docId = `prompt_${prompt.id}`;
       const promptDocRef = doc(db, "prompts", docId);
-      await setDoc(promptDocRef, { viewCount: increment(1) }, { merge: true });
+      
+      // Reset error count on success
+      await setDoc(promptDocRef, { viewCount: increment(1), errorCount: 0 }, { merge: true });
     } catch (err) {
       handleFirestoreError(
         err,
@@ -260,6 +257,16 @@ export default function App() {
       );
     }
   };
+
+  // ... (rest of App.tsx)
+
+  // ... (in the returned JSX, add TrollPopup)
+  <TrollPopup
+    isOpen={showTrollPopup}
+    onClose={() => setShowTrollPopup(false)}
+    {...activeTrollConfig}
+  />
+
 
   // --- Background Audio Management ---
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -326,8 +333,6 @@ export default function App() {
             musicData: "",
             musicUrl:
               "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-            passwordFailLimit: 5,
-            passwordFailGifUrl: "",
           };
           setDoc(settingsDocRef, defaultSettingsData).catch((err) => {
             handleFirestoreError(
@@ -625,6 +630,12 @@ export default function App() {
     setShowLogoutConfirm(false);
     setCurrentScreen("welcome");
     setToastMessage("Đã đăng xuất!");
+  };
+
+  const handleResetVotes = () => {
+    localStorage.removeItem("char_votes");
+    setVotesData({});
+    setToastMessage("🔄 Đã reset tất cả lượt vote về 0!");
   };
 
   // Portal Entrance Triggers
@@ -1163,9 +1174,8 @@ export default function App() {
                               );
                               setActiveGenreFilter(""); // reset sidebar genre
                             }}
-                            onPasswordFail={handlePasswordFail}
+                            onPasswordError={handlePasswordFail}
                             onOpenPrompt={handleOpenPrompt}
-                            passwordFailLimit={settings.passwordFailLimit || 5}
                             viewMode={viewMode}
                             votes={votesData[p.id.toString()] || 0}
                             onVote={handleVote}
@@ -1313,6 +1323,7 @@ export default function App() {
           setShowSettingsModal(false);
           setShowLogoutConfirm(true);
         }}
+        onResetVotes={handleResetVotes}
       />
 
       {/* 4. Add/Edit Prompt Modal */}
@@ -1391,214 +1402,18 @@ export default function App() {
         </div>
       )}
 
-      {/* 5.9. Customizable Wrong Password Troll Alarm Overlay */}
-      <AnimatePresence>
-        {showTrollOverlay && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-[200000] p-4 bg-rose-950/95 backdrop-blur-md"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="relative bg-slate-950 border-2 border-rose-500 rounded-3xl p-6 w-full max-w-[480px] text-center shadow-2xl space-y-5"
-            >
-              {/* Absolute close X button / countdown badge */}
-              {(() => {
-                const secondsRemaining = Math.max(
-                  0,
-                  Math.ceil(trollTimeLeft / 1000),
-                );
-                if (secondsRemaining > 0) {
-                  return (
-                    <div className="absolute top-4 right-4 bg-rose-950/85 border border-rose-500/40 rounded-full px-3 py-1 text-[10px] font-extrabold text-rose-400 flex items-center gap-1.5 shadow-md">
-                      <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping" />
-                      <span>ĐANG KHÓA: {secondsRemaining}S</span>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <motion.button
-                      initial={{ scale: 0, rotate: -90 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      id="close-troll-btn"
-                      onClick={() => {
-                        setShowTrollOverlay(false);
-                        setToastMessage(
-                          "💊 Can thiệp cưỡng chế thành công! Lần sau hãy cẩn thận.",
-                        );
-                      }}
-                      className="absolute top-4 right-4 text-white bg-rose-600 hover:bg-rose-500 rounded-full w-8 h-8 flex items-center justify-center transition-all cursor-pointer shadow-md border border-rose-400/30 font-bold text-lg leading-none focus:outline-none"
-                      title="Đóng cảnh báo"
-                    >
-                      &times;
-                    </motion.button>
-                  );
-                }
-              })()}
-
-              <div className="text-5xl animate-bounce pt-2">
-                🚨 Patient Alert! 🚨
-              </div>
-              <h2 className="font-comfortaa text-xl font-bold text-rose-500 uppercase tracking-wider">
-                PHÁ HOẠI BỆNH ÁN CỐ THỊ!
-              </h2>
-              <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-                Hệ thống phát hiện tài khoản của bạn đang cố tình bẻ khóa hồ sơ
-                liên tục! Ban quản trị Cố Thị đã tiến hành can thiệp cưỡng chế
-                đặc biệt!
-              </p>
-
-              <div className="rounded-2xl overflow-hidden border border-rose-800 bg-black/40 h-[180px] flex items-center justify-center relative">
-                {(() => {
-                  const mediaSrc =
-                    activeTrollMedia || settings.passwordFailGifUrl;
-
-                  if (!mediaSrc) {
-                    // No default if they don't upload
-                    return (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-slate-950/90 text-center">
-                        <span className="text-[64px] mb-4">🚨</span>
-                        <h2 className="text-4xl md:text-5xl font-black text-rose-500 uppercase tracking-widest mb-4">
-                          Báo động đỏ
-                        </h2>
-                        <p className="text-rose-400 font-bold text-lg max-w-md mx-auto line-height-relaxed">
-                          Bạn đã nhập sai mật khẩu quá nhiều lần.
-                        </p>
-                      </div>
-                    );
-                  }
-
-                  const isVideo =
-                    mediaSrc.startsWith("data:video/") ||
-                    mediaSrc
-                      .split("?")[0]
-                      .split("#")[0]
-                      .toLowerCase()
-                      .endsWith(".mp4") ||
-                    mediaSrc
-                      .split("?")[0]
-                      .split("#")[0]
-                      .toLowerCase()
-                      .endsWith(".webm") ||
-                    mediaSrc
-                      .split("?")[0]
-                      .split("#")[0]
-                      .toLowerCase()
-                      .endsWith(".mov") ||
-                    mediaSrc
-                      .split("?")[0]
-                      .split("#")[0]
-                      .toLowerCase()
-                      .endsWith(".ogg");
-
-                  if (isVideo) {
-                    return (
-                      <video
-                        src={mediaSrc}
-                        autoPlay
-                        loop
-                        playsInline
-                        ref={(el) => {
-                          if (el) {
-                            el.volume = 0.55; // Ensure smooth volume, avoiding too loud
-                          }
-                        }}
-                        className="w-full h-full object-cover"
-                      />
-                    );
-                  } else {
-                    return (
-                      <img
-                        src={mediaSrc}
-                        alt="Troll Alarm"
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    );
-                  }
-                })()}
-              </div>
-
-              {/* Progress bar with glowing progress tracker */}
-              {(() => {
-                const secondsRemaining = Math.max(
-                  0,
-                  Math.ceil(trollTimeLeft / 1000),
-                );
-                const progressPercent = Math.max(
-                  0,
-                  Math.min(100, ((8000 - trollTimeLeft) / 8000) * 100),
-                );
-                return (
-                  <div className="space-y-1.5 text-left w-full pt-1">
-                    <div className="flex justify-between items-center text-[10px] font-extrabold tracking-wider text-slate-400 uppercase">
-                      <span>Đang giải mã lệnh can thiệp...</span>
-                      <span className="text-rose-400 font-mono">
-                        {secondsRemaining > 0
-                          ? `${progressPercent.toFixed(0)}%`
-                          : "ĐÃ ĐỦ THỜI GIAN"}
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-900 border border-slate-800 rounded-full overflow-hidden relative">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 shadow-[0_0_8px_rgba(244,114,182,0.6)]"
-                        style={{ width: `${progressPercent}%` }}
-                        layout
-                      />
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div className="pt-2">
-                {(() => {
-                  const secondsRemaining = Math.max(
-                    0,
-                    Math.ceil(trollTimeLeft / 1000),
-                  );
-                  if (secondsRemaining > 0) {
-                    return (
-                      <button
-                        disabled
-                        className="w-full bg-slate-800 text-slate-500 font-extrabold py-3 rounded-2xl text-xs cursor-not-allowed uppercase tracking-widest border border-slate-700/40 flex items-center justify-center gap-2"
-                      >
-                        🔒 Xem hết nội dung cảnh báo ({secondsRemaining}s)
-                      </button>
-                    );
-                  } else {
-                    return (
-                      <motion.button
-                        initial={{ y: 5, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        onClick={() => {
-                          setShowTrollOverlay(false);
-                          setToastMessage(
-                            "💊 Can thiệp cưỡng chế thành công! Lần sau hãy cẩn thận.",
-                          );
-                        }}
-                        className="w-full bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-extrabold py-3 rounded-2xl text-xs cursor-pointer shadow-lg hover:shadow-rose-500/20 transition-all uppercase tracking-widest animate-pulse"
-                      >
-                        💉 Tôi hứa sẽ chữa bệnh ngoan ngoãn!
-                      </motion.button>
-                    );
-                  }
-                })()}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* 6. System Toast alerts */}
       <Toast message={toastMessage} onClose={() => setToastMessage("")} />
 
       {/* Global Confetti Celebration */}
       <ConfettiCelebration />
+      {activeTrollConfig && (
+        <TrollPopup
+          isOpen={showTrollPopup}
+          onClose={() => setShowTrollPopup(false)}
+          {...activeTrollConfig}
+        />
+      )}
     </div>
   );
 }

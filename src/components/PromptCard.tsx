@@ -11,13 +11,8 @@ interface PromptCardProps {
   onEdit: (prompt: Prompt) => void;
   onTagClick: (tag: string) => void;
   index?: number;
-  onPasswordFail?: (
-    triggerAlarm: boolean,
-    customMedia?: string,
-    customSound?: string,
-  ) => void;
+  onPasswordError?: (prompt: Prompt) => void;
   onOpenPrompt?: (prompt: Prompt) => void;
-  passwordFailLimit?: number;
   viewMode?: "grid" | "list";
   votes?: number;
   onVote?: (id: string) => void;
@@ -29,9 +24,8 @@ export default function PromptCard({
   onEdit,
   onTagClick,
   index = 0,
-  onPasswordFail,
+  onPasswordError,
   onOpenPrompt,
-  passwordFailLimit = 5,
   viewMode = "grid",
   votes = 0,
   onVote,
@@ -41,7 +35,6 @@ export default function PromptCard({
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [localFailCount, setLocalFailCount] = useState(0);
   const [showSecondaryHintPopup, setShowSecondaryHintPopup] = useState(false);
   const [ripples, setRipples] = useState<
     { id: number; x: number; y: number; size: number }[]
@@ -66,7 +59,6 @@ export default function PromptCard({
       setChallengeOpen(false);
       setShowSecondaryHintPopup(false);
       setErrorMsg("");
-      setLocalFailCount(0);
       if (onOpenPrompt) {
         onOpenPrompt(prompt);
       }
@@ -75,29 +67,12 @@ export default function PromptCard({
       // Open link in a new tab
       window.open(prompt.url, "_blank", "noreferrer,noopener");
     } else {
-      const nextFail = localFailCount + 1;
-      setLocalFailCount(nextFail);
-      const limit =
-        prompt.passwordFailLimit !== undefined
-          ? prompt.passwordFailLimit
-          : passwordFailLimit;
-
-      if (nextFail % limit === 0) {
-        // Trigger troll alarm on exact multiples of limit
-        if (onPasswordFail) {
-          onPasswordFail(true, prompt.passwordFailGifUrl);
-        }
-        // Show secondary hint popup if configured
-        if (prompt.passwordFailSecondaryHint) {
-          setShowSecondaryHintPopup(true);
-        }
-        setErrorMsg(`🚨 Cảnh báo: Nhập sai ${nextFail} lần!`);
-      } else {
-        setErrorMsg(`❌ Nhập sai: ${nextFail}/${limit} lần!`);
-        if (onPasswordFail) {
-          onPasswordFail(false);
-        }
+      // Trigger troll alarm
+      if (onPasswordError) {
+        onPasswordError(prompt);
       }
+      const newCount = (prompt.errorCount || 0) + 1;
+      setErrorMsg(`❌ Bé hư đã sai ${newCount} lần!`);
     }
   };
 
@@ -318,17 +293,17 @@ export default function PromptCard({
           </div>
         )}
 
-        {showSecondaryHintPopup && prompt.passwordFailSecondaryHint && (
+        {showSecondaryHintPopup && (
           <div className="absolute inset-0 bg-slate-950/95 border-2 border-amber-500/80 rounded-2xl p-4 flex flex-col justify-center items-center text-center z-30 shadow-2xl backdrop-blur-md">
             <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mb-1 border border-amber-500/30">
               <span className="text-sm animate-bounce">💡</span>
             </div>
             <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
-              Gợi ý bổ sung (Sai lần {localFailCount})!
+              Gợi ý bổ sung (Sai lần {prompt.errorCount || 0})!
             </h5>
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1 w-full max-w-[280px]">
               <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
-                "{prompt.passwordFailSecondaryHint}"
+                "Đang kiểm tra dữ liệu..."
               </p>
             </div>
             <button
@@ -521,17 +496,17 @@ export default function PromptCard({
         </div>
       )}
 
-      {showSecondaryHintPopup && prompt.passwordFailSecondaryHint && (
+      {showSecondaryHintPopup && (
         <div className="absolute inset-0 bg-slate-950/95 border-2 border-amber-500/80 rounded-2xl p-4 flex flex-col justify-center items-center text-center z-30 shadow-2xl backdrop-blur-md">
           <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mb-1 border border-amber-500/30">
             <span className="text-sm animate-bounce">💡</span>
           </div>
           <h5 className="text-amber-400 font-bold text-xs uppercase tracking-wide">
-            Gợi ý bổ sung (Sai lần {localFailCount})!
+            Gợi ý bổ sung (Sai lần {prompt.errorCount || 0})!
           </h5>
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 my-1.5 w-full max-w-[200px]">
             <p className="text-amber-200 text-xs font-semibold select-all italic leading-relaxed">
-              "{prompt.passwordFailSecondaryHint}"
+              "Đang kiểm tra dữ liệu..."
             </p>
           </div>
           <button

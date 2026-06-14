@@ -39,12 +39,6 @@ export default function PromptModal({
   const [passwordHint, setPasswordHint] = useState("");
   const [showPromptPassword, setShowPromptPassword] = useState(false);
 
-  // Custom troll alarm fields
-  const [passwordFailLimit, setPasswordFailLimit] = useState<number>(settings?.passwordFailLimit || 5);
-  const [passwordFailGifUrl, setPasswordFailGifUrl] = useState(settings?.passwordFailGifUrl || "");
-  const [passwordFailSecondaryHint, setPasswordFailSecondaryHint] =
-    useState("");
-
   // Sync state if editing
   useEffect(() => {
     if (editingPrompt) {
@@ -58,15 +52,10 @@ export default function PromptModal({
       setEnablePassword(!!editingPrompt.password);
       setPassword(editingPrompt.password || "");
       setPasswordHint(editingPrompt.passwordHint || "");
-      setPasswordFailLimit(
-        editingPrompt.passwordFailLimit !== undefined
-          ? editingPrompt.passwordFailLimit
-          : 5,
-      );
-      setPasswordFailGifUrl(editingPrompt.passwordFailGifUrl || "");
-      setPasswordFailSecondaryHint(
-        editingPrompt.passwordFailSecondaryHint || "",
-      );
+      setMaxFailureLimit(editingPrompt.maxFailureLimit || 5);
+      setHintText(editingPrompt.hintText || "");
+      setMediaUrl(editingPrompt.mediaUrl || "");
+      setTrollMode(editingPrompt.trollMode || "hint");
     } else {
       setZone(currentZone);
       setTitle("");
@@ -78,11 +67,19 @@ export default function PromptModal({
       setEnablePassword(false);
       setPassword("");
       setPasswordHint("");
-      setPasswordFailLimit(settings?.passwordFailLimit || 5);
-      setPasswordFailGifUrl(settings?.passwordFailGifUrl || "");
-      setPasswordFailSecondaryHint("");
+      setMaxFailureLimit(5);
+      setHintText("");
+      setMediaUrl("");
+      setTrollMode("hint");
     }
   }, [editingPrompt, isOpen, currentZone, settings]);
+
+  const [maxFailureLimit, setMaxFailureLimit] = useState(5);
+  const [hintText, setHintText] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [trollMode, setTrollMode] = useState<"hint" | "media">("hint");
+
+  // Sync state if editing (need to ensure these are defined, move state above)
 
   const currentGenres = genres;
 
@@ -119,11 +116,10 @@ export default function PromptModal({
         zone,
         password: enablePassword ? password : "",
         passwordHint: enablePassword ? passwordHint : "",
-        passwordFailLimit: enablePassword ? passwordFailLimit : undefined,
-        passwordFailGifUrl: enablePassword ? passwordFailGifUrl : "",
-        passwordFailSecondaryHint: enablePassword
-          ? passwordFailSecondaryHint
-          : "",
+        maxFailureLimit: enablePassword ? maxFailureLimit : 5,
+        hintText: enablePassword && trollMode === 'hint' ? hintText : "",
+        mediaUrl: enablePassword && trollMode === 'media' ? mediaUrl : "",
+        trollMode: enablePassword ? trollMode : 'hint',
       },
       zone,
     );
@@ -138,9 +134,10 @@ export default function PromptModal({
       setEnablePassword(false);
       setPassword("");
       setPasswordHint("");
-      setPasswordFailLimit(settings?.passwordFailLimit || 5);
-      setPasswordFailGifUrl(settings?.passwordFailGifUrl || "");
-      setPasswordFailSecondaryHint("");
+      setMaxFailureLimit(5);
+      setHintText("");
+      setMediaUrl("");
+      setTrollMode("hint");
     }
   };
 
@@ -173,7 +170,7 @@ export default function PromptModal({
               </label>
               <input
                 type="text"
-                value={title}
+                value={title || ""}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ví dụ: Tri kỷ Cố Khải..."
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl outline-none focus:ring-1 focus:ring-[var(--zone-primary)] text-xs"
@@ -184,7 +181,7 @@ export default function PromptModal({
                 Khoa Bệnh *
               </label>
               <select
-                value={genre}
+                value={genre || ""}
                 onChange={(e) => setGenre(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-xl outline-none focus:ring-1 focus:ring-[var(--zone-primary)] text-xs cursor-pointer"
               >
@@ -215,7 +212,7 @@ export default function PromptModal({
               <input
                 type="text"
                 maxLength={4}
-                value={icon}
+                value={icon || ""}
                 onChange={(e) => setIcon(e.target.value)}
                 placeholder="👩‍⚕️"
                 className="w-full px-3 py-2 text-center border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 rounded-xl outline-none focus:ring-1 focus:ring-[var(--zone-primary)] text-xs"
@@ -227,7 +224,7 @@ export default function PromptModal({
               </label>
               <input
                 type="url"
-                value={url}
+                value={url || ""}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://..."
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl outline-none focus:ring-1 focus:ring-[var(--zone-primary)] text-xs"
@@ -241,7 +238,7 @@ export default function PromptModal({
             </label>
             <textarea
               rows={2}
-              value={description}
+              value={description || ""}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ghi chú thêm triệu chứng..."
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl outline-none focus:ring-1 focus:ring-[var(--zone-primary)] text-xs resize-none"
@@ -269,7 +266,7 @@ export default function PromptModal({
               ))}
               <input
                 type="text"
-                value={tagInput}
+                value={tagInput || ""}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
                 placeholder={
@@ -293,13 +290,26 @@ export default function PromptModal({
 
             {enablePassword && (
               <div className="grid grid-cols-2 gap-4 mt-3 p-3.5 bg-amber-500/10 border border-amber-200/40 dark:border-amber-900/40 rounded-xl animate-[in_0.2s_ease-out]">
+                <div className="col-span-2">
+                   <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
+                    Số lần nhập sai tối đa
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxFailureLimit ?? 5}
+                    onChange={(e) => setMaxFailureLimit(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg outline-none text-xs"
+                  />
+                </div>
+                
                 <div>
                   <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
                     Gợi ý mật khẩu
                   </label>
                   <input
                     type="text"
-                    value={passwordHint}
+                    value={passwordHint || ""}
                     onChange={(e) => setPasswordHint(e.target.value)}
                     placeholder="Năm sinh bác sĩ..."
                     className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
@@ -312,7 +322,7 @@ export default function PromptModal({
                   <div className="relative">
                     <input
                       type={showPromptPassword ? "text" : "password"}
-                      value={password}
+                      value={password || ""}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Mã khóa mở prompt..."
                       className="w-full pl-3 pr-10 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
@@ -334,105 +344,56 @@ export default function PromptModal({
                   </div>
                 </div>
 
-                <div className="col-span-2 border-t border-dashed border-amber-600/30 pt-3 mt-1">
-                  <span className="block text-[11px] font-extrabold uppercase tracking-widest text-amber-500 mb-2">
-                    🚨 Cấu hình Troll khi nhập sai mật khẩu:
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Limit */}
-                    <div className="col-span-1">
-                      <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
-                        Nhập sai tối đa
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={passwordFailLimit}
-                        onChange={(e) =>
-                          setPasswordFailLimit(Number(e.target.value) || 5)
-                        }
-                        className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 rounded-lg outline-none text-xs text-center font-bold"
-                      />
-                    </div>
-
-                    {/* Hint phụ */}
-                    <div className="col-span-2">
-                      <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
-                        HINT PHỤ
-                      </label>
-                      <input
-                        type="text"
-                        value={passwordFailSecondaryHint}
-                        onChange={(e) =>
-                          setPasswordFailSecondaryHint(e.target.value)
-                        }
-                        placeholder="Hiện sau các mốc nhập sai lũy tiến..."
-                        className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
-                      />
-                    </div>
-
-                    {/* GIF/Video URL or File */}
-                    <div className="col-span-3">
-                      <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
-                        LINK ẢNH GIF HOẶC FILE VIDEO
-                      </label>
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          value={passwordFailGifUrl}
-                          onChange={(e) =>
-                            setPasswordFailGifUrl(e.target.value)
-                          }
-                          placeholder="Bỏ trống nếu không dùng."
-                          className="flex-1 px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
-                        />
-                        <label className="bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center justify-center cursor-pointer select-none transition shrink-0 active:scale-95">
-                          📤 Tải tệp
-                          <input
-                            type="file"
-                            accept="image/*,video/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                if (file.size > 2 * 1024 * 1024) {
-                                  alert(
-                                    "⚠️ Tệp tin hoành tráng quá nà! Vui lòng chọn tệp nhỏ hơn 2MB để tránh nghẽn lưu trữ nhé.",
-                                  );
-                                  return;
-                                }
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setPasswordFailGifUrl(
-                                    reader.result as string,
-                                  );
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
+                <div className="col-span-2 mt-2 pt-2 border-t border-amber-200/50">
+                    <p className="font-bold text-[10px] uppercase text-amber-800 dark:text-amber-300 mb-2">
+                        Cấu hình Troll (khi sai pass)
+                    </p>
+                    <div className="flex gap-4 mb-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-800 dark:text-slate-200">
+                        <input type="radio" name="trollMode" checked={trollMode === 'hint'} onChange={() => setTrollMode('hint')} />
+                        Gợi ý văn bản
                         </label>
-                      </div>
-                      {passwordFailGifUrl && (
-                        <div className="mt-1 flex items-center justify-between text-[9px] text-emerald-400 font-semibold gap-2">
-                          <span className="truncate pr-2">
-                            {passwordFailGifUrl.startsWith("data:")
-                              ? "✅ Tệp cục bộ đã nạp"
-                              : "🔗 Đang dùng link tài nguyên"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setPasswordFailGifUrl("")}
-                            className="text-rose-400 hover:text-rose-300 cursor-pointer shrink-0"
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      )}
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-800 dark:text-slate-200">
+                        <input type="radio" name="trollMode" checked={trollMode === 'media'} onChange={() => setTrollMode('media')} />
+                        Media (GIF/Video)
+                        </label>
                     </div>
-                  </div>
+
+                    {trollMode === 'hint' ? (
+                    <div>
+                        <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
+                        HINT PHỤ
+                        </label>
+                        <input
+                        type="text"
+                        value={hintText || ""}
+                        onChange={(e) => setHintText(e.target.value)}
+                        placeholder="Nhập hint cho pop-up..."
+                        className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
+                        />
+                    </div>
+                    ) : (
+                    <div>
+                        <label className="block font-bold mb-1 text-[10px] uppercase text-amber-800 dark:text-amber-300">
+                        Tải file Media (ảnh/video)
+                        </label>
+                        <input
+                        type="file"
+                        accept="image/*,video/*"
+                        onChange={(e) => {
+                           const file = e.target.files?.[0];
+                           if(file) {
+                             const reader = new FileReader();
+                             reader.onload = (ev) => {
+                               setMediaUrl(ev.target?.result as string);
+                             };
+                             reader.readAsDataURL(file);
+                           }
+                        }}
+                        className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-lg outline-none text-xs"
+                        />
+                    </div>
+                    )}
                 </div>
               </div>
             )}
