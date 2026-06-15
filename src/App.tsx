@@ -1351,11 +1351,22 @@ export default function App() {
       className={`min-h-screen text-[var(--text)] transition-colors duration-300 relative select-none font-sans`}
     >
       {isOfflineMode && (
-        <div id="offline-mode-banner" className="bg-amber-600/95 text-white font-medium text-xs md:text-sm py-2.5 px-4 text-center backdrop-blur-md sticky top-0 z-50 shadow-md flex items-center justify-center gap-2 border-b border-amber-500 transition-all">
-          <span className="text-sm md:text-base">⚠️</span>
-          <span>
-            <strong>Chế độ Ngoại tuyến Tự động:</strong> Hệ thống lưu trữ đám mây (Firestore) đã vượt quá hạn ngạch ngày. Viện Tâm Thần Cố Thị đã tự động chuyển đổi sang lưu trữ ngoại tuyến trên trình duyệt (Offline Local Storage). Bé vẫn có thể xem và quản trị bệnh án an toàn!
-          </span>
+        <div id="offline-mode-banner" className="bg-gradient-to-r from-amber-600 to-amber-700 text-white font-medium text-xs md:text-sm py-3 px-4 text-center backdrop-blur-md sticky top-0 z-50 shadow-md flex flex-col sm:flex-row items-center justify-center gap-3 border-b border-amber-500 transition-all select-text">
+          <div className="flex items-center gap-2">
+            <span className="text-sm md:text-base animate-pulse">⚠️</span>
+            <span>
+              <strong>Chế độ Ngoại tuyến Tự động:</strong> Hệ thống lưu trữ đám mây (Firestore) bị quá tải hoặc đạt hạn ngạch ngày. Viện hiển thị dữ liệu sáp nhập sao lưu trong trình duyệt của thiết bị này. Các bệnh án lưu trực tuyến sẽ tự động quay lại khi hệ thống đám mây hoạt động trở lại!
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              setIsOfflineMode(false);
+              window.location.reload();
+            }}
+            className="px-3.5 py-1.5 bg-white text-amber-800 hover:bg-slate-100 font-extrabold rounded-xl text-xs whitespace-nowrap transition cursor-pointer shadow-md active:scale-95 hover:scale-[1.03] flex items-center gap-1"
+          >
+            🔄 Kết nối lại Đám mây
+          </button>
         </div>
       )}
       <AnimatePresence mode="wait">
@@ -1656,6 +1667,11 @@ export default function App() {
         records={records}
         onAddRecord={handleAddRecord}
         onDeleteRecord={handleDeleteRecord}
+        promptsHospital={promptsHospital}
+        promptsCaiNghien={promptsCaiNghien}
+        settings={settings}
+        onImportBackup={handleImportBackup}
+        isOfflineMode={isOfflineMode}
       />
 
       {/* 2. Admin Credentials Lock modal */}

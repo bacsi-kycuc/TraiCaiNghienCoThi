@@ -11,8 +11,17 @@ import {
   Stethoscope,
   AlertTriangle,
   ScrollText,
+  Download,
+  Upload,
+  ShieldCheck,
+  Database,
 } from "lucide-react";
-import { Genre, RegRecord } from "../types";
+import { Genre, RegRecord, Settings, Prompt } from "../types";
+import { 
+  checkStoragePersisted, 
+  requestPersistentStorage,
+  getFromIndexedDB
+} from "../lib/indexedDbBackup";
 
 interface AIExamModalProps {
   isOpen: boolean;
@@ -21,6 +30,18 @@ interface AIExamModalProps {
   records: RegRecord[];
   onAddRecord: (record: Omit<RegRecord, "id" | "date">) => void;
   onDeleteRecord: (id: number) => void;
+  
+  // Backup enhancements properties for normal users
+  promptsHospital?: Prompt[];
+  promptsCaiNghien?: Prompt[];
+  settings?: Settings;
+  onImportBackup?: (backupData: {
+    settings: Settings;
+    genres: Genre[];
+    prompts: Prompt[];
+    records: RegRecord[];
+  }) => Promise<void>;
+  isOfflineMode?: boolean;
 }
 
 const QUICK_PRESETS = [
@@ -77,8 +98,13 @@ export default function AIExamModal({
   records,
   onAddRecord,
   onDeleteRecord,
+  promptsHospital = [],
+  promptsCaiNghien = [],
+  settings,
+  onImportBackup,
+  isOfflineMode,
 }: AIExamModalProps) {
-  const [activeTab, setActiveTab] = useState<0 | 1>(0); // 0: Form, 1: Record Ledger
+  const [activeTab, setActiveTab] = useState<0 | 1 | 2>(0); // 0: Form, 1: Record Ledger, 2: Backup
 
   // Form states
   const [name, setName] = useState("");
@@ -90,6 +116,108 @@ export default function AIExamModal({
   // Search/Filter for saved illness records
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRecordIds, setExpandedRecordIds] = useState<number[]>([]);
+
+  // Persistence & local storage stats
+  const [isPersisted, setIsPersisted] = useState(false);
+  const [dbStats, setDbStats] = useState({ indexedDbOk: false, recordsCount: 0 });
+  const [importError, setImportError] = useState("");
+  const [importSuccess, setImportSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const checkPersistence = async () => {
+        const persisted = await checkStoragePersisted();
+        setIsPersisted(persisted);
+        try {
+          const recordsInIndexedDb = await getFromIndexedDB("records");
+          setDbStats({
+            indexedDbOk: true,
+            recordsCount: Array.isArray(recordsInIndexedDb) ? recordsInIndexedDb.length : records.length,
+          });
+        } catch {
+          setDbStats({ indexedDbOk: false, recordsCount: records.length });
+        }
+      };
+      checkPersistence();
+    }
+  }, [isOpen, records]);
+
+  const handleRequestPersistence = async () => {
+    const success = await requestPersistentStorage();
+    setIsPersisted(success);
+    if (success) {
+      alert("✅ Tuyệt vời! Trình duyệt đã khóa bộ nhớ kiên cố cho Viện Tâm Thần Cố Thị trên thiết bị này. Dữ liệu bệnh án của bé sẽ an toàn tuyệt đối, không sợ bị xóa nhầm cache.");
+    } else {
+      alert("⚠️ Thiết bị từ chối cấp quyền kiên cố (thường do ổ đĩa đầy hoặc chính sách trình duyệt). Tuy nhiên dữ liệu của bé vẫn đang được lưu tạm thời.");
+    }
+  };
+
+  const handleExportBackup = () => {
+    try {
+      const backupData = {
+        records: records,
+        exportedAt: new Date().toISOString(),
+        device: navigator.userAgent
+      };
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `cothi_sodiachu_records_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("❌ Lỗi xuất dữ liệu: " + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportError("");
+    setImportSuccess(false);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (!json.records || !Array.isArray(json.records)) {
+          throw new Error("Tệp sao lưu không chứa danh sách bệnh án hợp lệ.");
+        }
+        if (onImportBackup) {
+          // Merge / Restores ONLY the records. Completely keeps settings, genres, and prompts as is.
+          await onImportBackup({
+            settings: settings || {
+              discordLink: "https://discord.gg",
+              facebookLink: "https://facebook.com",
+              welcomeBgImage: "",
+              welcomeBgFileName: "",
+              hospitalBgImage: "",
+              hospitalBgFileName: "",
+              cainhienBgImage: "",
+              cainhienBgFileName: "",
+              musicName: "Lullaby of Co Thi (Mặc định)",
+              musicData: "",
+              musicUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+            },
+            genres: genres,
+            prompts: [...promptsHospital, ...promptsCaiNghien],
+            records: json.records
+          });
+          setImportSuccess(true);
+          alert("🎉 Khôi phục dữ liệu sổ chẩn trị thành công! Tất cả bệnh án của bé đã được an toàn sáp nhập.");
+        } else {
+          throw new Error("Bộ sáp nhập chưa sẵn sàng.");
+        }
+      } catch (err) {
+        setImportError(err instanceof Error ? err.message : "Định dạng JSON không hợp lệ");
+      }
+    };
+    reader.readAsText(file);
+  };
 
   // Default set first available genre as default form category
   useEffect(() => {
@@ -260,6 +388,17 @@ export default function AIExamModal({
                 id="ai-exam-tab-records"
               >
                 <span>📄 🗺️</span> Hồ Sơ ({filteredRecords.length})
+              </button>
+              <button
+                onClick={() => setActiveTab(2)}
+                className={`flex-1 py-3 text-xs font-bold font-comfortaa rounded-2xl transition duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 2
+                    ? "bg-gradient-to-r from-[#E11D48] to-[#910F2B] text-white shadow-md font-extrabold border border-[#E11D48]/30"
+                    : "text-[#FDA4AF]/60 hover:text-[#FDA4AF] hover:bg-[#2A1137]/30"
+                }`}
+                id="ai-exam-tab-backup"
+              >
+                <span>💾 🛡️</span> Sao Lưu Thiết Bị
               </button>
             </div>
 
@@ -602,6 +741,152 @@ export default function AIExamModal({
                       })}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* TAB 2: DEVICE BACKUP & PERSISTENT STORAGE */}
+              {activeTab === 2 && (
+                <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
+                  {/* Persistent Storage Request Block */}
+                  <div className="bg-[#050108]/50 border border-[#3E1444]/60 p-5 rounded-3xl space-y-4">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-[#EAB308]" />
+                      <h4 className="text-sm font-bold text-slate-100 font-comfortaa">
+                        Kiên Cố Hóa Bộ Nhớ Cục Bộ
+                      </h4>
+                    </div>
+                    <p className="text-xs text-[#FDA4AF]/80 leading-relaxed font-sans">
+                      Theo mặc định, trình duyệt có thể tự động xóa dữ liệu LocalStorage/IndexedDB của các trang web khi thiết bị của bạn bị đầy bộ nhớ hoặc dọn dẹp cache. Hãy kích hoạt chế độ **Kiên Cố Hóa** để yêu cầu hệ điều hành bảo vệ bền bỉ dữ liệu bệnh án này!
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-2xl bg-[#0E0314]/80 border border-[#3E1444]/40">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-slate-400 block uppercase font-mono font-bold tracking-wider">
+                          Trạng thái kiên cố hiện tại:
+                        </span>
+                        {isPersisted ? (
+                          <span className="text-xs text-emerald-400 font-bold flex items-center gap-1.5 font-comfortaa">
+                            <span>✅</span> ĐÃ KIÊN CỐ HÓA VĨNH VIỄN
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#FDA4AF] font-bold flex items-center gap-1.5 font-comfortaa">
+                            <span>⚠️</span> CHƯA KIÊN CỐ HÓA (DỄ MẤT CACHE)
+                          </span>
+                        )}
+                      </div>
+
+                      {!isPersisted && (
+                        <button
+                          type="button"
+                          onClick={handleRequestPersistence}
+                          className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white font-extrabold text-xs rounded-xl transition duration-200 active:scale-95 shadow-md shadow-amber-500/10 cursor-pointer flex items-center justify-center gap-1.5 hover:scale-[1.02]"
+                        >
+                          🔒 Kích hoạt Kiên cố vĩnh viễn
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Cache Stats Table */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-[#050108]/40 border border-[#3E1444]/40 p-4 rounded-2xl flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#2A1137]/60 rounded-xl border border-[#3E1444] flex items-center justify-center">
+                        <Database className="w-5 h-5 text-[#FDA4AF]" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider">
+                          Loại Bộ Nhớ Phụ Trợ
+                        </span>
+                        <span className="text-xs text-slate-100 font-bold font-comfortaa">
+                          {dbStats.indexedDbOk ? "IndexedDB Bền Vững" : "LocalStorage Cơ Bản"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#050108]/40 border border-[#3E1444]/40 p-4 rounded-2xl flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#2A1137]/60 rounded-xl border border-[#3E1444] flex items-center justify-center">
+                        <ClipboardList className="w-5 h-5 text-[#FDA4AF]" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-mono tracking-wider">
+                          Số lượng bệnh án lưu máy
+                        </span>
+                        <span className="text-xs text-slate-100 font-bold font-comfortaa">
+                          {dbStats.recordsCount} bệnh án
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Export & Import file backup section */}
+                  <div className="bg-[#050108]/50 border border-[#3E1444]/60 p-5 rounded-3xl space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Download className="w-5 h-5 text-[#EAB308]" />
+                      <h4 className="text-sm font-bold text-slate-100 font-comfortaa">
+                        Xuất & Nhập Tệp Sao Lưu (.json)
+                      </h4>
+                    </div>
+                    <p className="text-xs text-[#FDA4AF]/80 leading-relaxed font-sans">
+                      Hãy chủ động tải bản sao bệnh án của mình về máy để lưu trữ dự phòng, hoặc tải lên để khôi phục lại hồ sơ cũ khi bạn đổi thiết bị hoặc chuyển đổi tài khoản!
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      {/* Export button */}
+                      <button
+                        type="button"
+                        onClick={handleExportBackup}
+                        className="p-5 bg-[#0E0314] hover:bg-[#2A1137]/40 border border-[#3E1444]/70 hover:border-[#E11D48]/70 rounded-2xl text-left transition duration-200 cursor-pointer space-y-2 flex flex-col items-start justify-center w-full"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-[#E11D48]/15 border border-[#E11D48]/25 flex items-center justify-center">
+                          <Download className="w-4 h-4 text-[#FDA4AF]" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-slate-100 block font-comfortaa">
+                            Xuất dữ liệu bệnh án (.json)
+                          </span>
+                          <span className="text-[10px] text-[#FDA4AF]/65 block mt-0.5 leading-relaxed font-sans">
+                            Tải về tệp bản sao bảo mật chứa toàn bộ bệnh án lưu trữ trong trình duyệt của bạn.
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Import file upload container */}
+                      <div className="p-5 bg-[#0E0314] border border-[#3E1444]/70 rounded-2xl relative space-y-2 flex flex-col items-start justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
+                          <Upload className="w-4 h-4 text-indigo-300" />
+                        </div>
+                        <div className="w-full">
+                          <span className="text-xs font-bold text-slate-100 block font-comfortaa">
+                            Khôi phục từ tệp sao lưu (.json)
+                          </span>
+                          <input
+                            type="file"
+                            accept=".json"
+                            onChange={handleImportFile}
+                            className="hidden"
+                            id="user-records-import-upload"
+                          />
+                          <label
+                            htmlFor="user-records-import-upload"
+                            className="inline-flex items-center gap-1 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 hover:border-indigo-500/70 text-indigo-200 hover:text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all mt-2.5 cursor-pointer uppercase tracking-wider font-mono self-start"
+                          >
+                            📁 Chọn tệp tin để nạp
+                          </label>
+
+                          {importError && (
+                            <span className="text-[10px] text-red-400 block mt-1.5 font-bold">
+                              ✗ {importError}
+                            </span>
+                          )}
+                          {importSuccess && (
+                            <span className="text-[10px] text-emerald-400 block mt-1.5 font-bold">
+                              ✓ Nạp dữ liệu thành công!
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
