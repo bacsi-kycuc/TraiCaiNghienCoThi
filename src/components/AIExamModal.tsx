@@ -30,6 +30,7 @@ interface AIExamModalProps {
   records: RegRecord[];
   onAddRecord: (record: Omit<RegRecord, "id" | "date">) => void;
   onDeleteRecord: (id: number) => void;
+  isAdmin?: boolean;
   
   // Backup enhancements properties for normal users
   promptsHospital?: Prompt[];
@@ -91,6 +92,30 @@ const CLINICAL_SYMPTOMS = [
   "Thầy giáo nho nhã hoặc streamer mở hồn dở khóc dở cười 🏠",
 ];
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query || !query.trim()) return text;
+  const safeQuery = escapeRegExp(query.trim());
+  const regex = new RegExp(`(${safeQuery})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="bg-yellow-400/25 text-[#EAB308] border-b border-[#EAB308]/50 px-0.5 rounded font-black shadow-xs">
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 export default function AIExamModal({
   isOpen,
   onClose,
@@ -103,6 +128,7 @@ export default function AIExamModal({
   settings,
   onImportBackup,
   isOfflineMode,
+  isAdmin = false,
 }: AIExamModalProps) {
   const [activeTab, setActiveTab] = useState<0 | 1 | 2>(0); // 0: Form, 1: Record Ledger, 2: Backup
 
@@ -115,7 +141,15 @@ export default function AIExamModal({
 
   // Search/Filter for saved illness records
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [expandedRecordIds, setExpandedRecordIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Persistence & local storage stats
   const [isPersisted, setIsPersisted] = useState(false);
@@ -302,9 +336,10 @@ export default function AIExamModal({
   const filteredRecords = records.filter((r) => {
     const isCaiNghien = r.zone === "cai-nghien";
     const matchesSearch =
-      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.genre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.note.toLowerCase().includes(searchQuery.toLowerCase());
+      r.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      r.genre.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      r.note.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      (r.symptoms && r.symptoms.some((s) => s.toLowerCase().includes(debouncedSearchQuery.toLowerCase())));
     return isCaiNghien && matchesSearch;
   });
 
@@ -626,12 +661,17 @@ export default function AIExamModal({
                       value={searchQuery || ""}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Tìm kiếm theo họ tên, triệu chứng hoặc khoa chẩn đoán..."
-                      className="w-full pl-4 pr-12 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/35 font-comfortaa"
+                      className="w-full pl-4 pr-32 py-3 bg-[#0E0314] border border-[#3E1444]/80 rounded-2xl outline-none focus:border-[#E11D48] text-xs text-white placeholder-[#FDA4AF]/35 font-comfortaa"
                     />
+                    {searchQuery !== debouncedSearchQuery && (
+                      <span className="text-[10px] font-bold text-yellow-500/80 animate-pulse absolute right-14 top-1/2 -translate-y-1/2 pointer-events-none select-none">
+                        Đang chẩn lọc...
+                      </span>
+                    )}
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery("")}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-[#FDA4AF] hover:text-white"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] uppercase font-bold text-[#FDA4AF] hover:text-white"
                       >
                         Xóa
                       </button>
@@ -648,7 +688,7 @@ export default function AIExamModal({
                       <p className="text-xs text-[#FDA4AF]/60 max-w-sm mx-auto">
                         Hãy chuyển qua thẻ{" "}
                         <span className="text-[#FDA4AF] font-bold">
-                          📋 Lập Hồ Sơ Mới
+                           📋 Lập Hồ Sơ Mới
                         </span>{" "}
                         để tự ghi nhận bệnh án hoang tưởng đầu tiên của bạn tại
                         Trại Cai Nghiện Cố Thị nhé!
@@ -670,11 +710,11 @@ export default function AIExamModal({
                             >
                               <div className="min-w-0 pr-4">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-extrabold font-comfortaa text-xs text-slate-100 flex items-center gap-1.5">
-                                    👤 {r.name}
+                                  <span className="font-extrabold font-comfortaa text-xs text-slate-100 flex items-center gap-1.5 leading-relaxed">
+                                    👤 {highlightText(r.name, debouncedSearchQuery)}
                                   </span>
                                   <span className="text-[9px] bg-[#E11D48]/15 text-[#FDA4AF] border border-[#E11D48]/25 font-bold px-2 py-0.5 rounded-full">
-                                    {r.genre}
+                                    {highlightText(r.genre, debouncedSearchQuery)}
                                   </span>
                                 </div>
                                 <span className="text-[9px] text-[#FDA4AF]/50 block mt-1">
@@ -686,17 +726,19 @@ export default function AIExamModal({
                                 <span className="text-[10px] text-slate-400 font-mono">
                                   {r.date || "Hôm nay"}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteRecord(r.id);
-                                  }}
-                                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition cursor-pointer"
-                                  title="Xóa hồ sơ"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                {isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeleteRecord(r.id);
+                                    }}
+                                    className="w-7 h-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition cursor-pointer"
+                                    title="Xóa hồ sơ"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                                 {isExpanded ? (
                                   <ChevronUp className="w-4 h-4 text-[#FDA4AF]" />
                                 ) : (
@@ -719,7 +761,7 @@ export default function AIExamModal({
                                           key={idx}
                                           className="bg-[#2A1137]/35 border border-[#3E1444]/40 rounded-xl p-2 text-[10px] text-slate-300"
                                         >
-                                          • {s}
+                                          • {highlightText(s, debouncedSearchQuery)}
                                         </div>
                                       ))}
                                     </div>
@@ -730,8 +772,8 @@ export default function AIExamModal({
                                   <div className="text-[9px] font-bold text-[#EAB308] uppercase tracking-wider">
                                     Tiên lượng lời tự thuật hành vi:
                                   </div>
-                                  <div className="bg-[#190924] border border-[#3E1444]/60 p-3 rounded-xl italic text-[#FDA4AF]/90 leading-relaxed">
-                                    "{r.note}"
+                                  <div className="bg-[#190924] border border-[#3E1444]/60 p-3 rounded-xl italic text-[#FDA4AF]/90 leading-relaxed whitespace-pre-wrap">
+                                    "{highlightText(r.note, debouncedSearchQuery)}"
                                   </div>
                                 </div>
                               </div>
@@ -819,74 +861,76 @@ export default function AIExamModal({
                   </div>
 
                   {/* Export & Import file backup section */}
-                  <div className="bg-[#050108]/50 border border-[#3E1444]/60 p-5 rounded-3xl space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Download className="w-5 h-5 text-[#EAB308]" />
-                      <h4 className="text-sm font-bold text-slate-100 font-comfortaa">
-                        Xuất & Nhập Tệp Sao Lưu (.json)
-                      </h4>
-                    </div>
-                    <p className="text-xs text-[#FDA4AF]/80 leading-relaxed font-sans">
-                      Hãy chủ động tải bản sao bệnh án của mình về máy để lưu trữ dự phòng, hoặc tải lên để khôi phục lại hồ sơ cũ khi bạn đổi thiết bị hoặc chuyển đổi tài khoản!
-                    </p>
+                  {isAdmin && (
+                    <div className="bg-[#050108]/50 border border-[#3E1444]/60 p-5 rounded-3xl space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Download className="w-5 h-5 text-[#EAB308]" />
+                        <h4 className="text-sm font-bold text-slate-100 font-comfortaa">
+                          Xuất & Nhập Tệp Sao Lưu (.json)
+                        </h4>
+                      </div>
+                      <p className="text-xs text-[#FDA4AF]/80 leading-relaxed font-sans">
+                        Hãy chủ động tải bản sao bệnh án của mình về máy để lưu trữ dự phòng, hoặc tải lên để khôi phục lại hồ sơ cũ khi bạn đổi thiết bị hoặc chuyển đổi tài khoản!
+                      </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                      {/* Export button */}
-                      <button
-                        type="button"
-                        onClick={handleExportBackup}
-                        className="p-5 bg-[#0E0314] hover:bg-[#2A1137]/40 border border-[#3E1444]/70 hover:border-[#E11D48]/70 rounded-2xl text-left transition duration-200 cursor-pointer space-y-2 flex flex-col items-start justify-center w-full"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-[#E11D48]/15 border border-[#E11D48]/25 flex items-center justify-center">
-                          <Download className="w-4 h-4 text-[#FDA4AF]" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-bold text-slate-100 block font-comfortaa">
-                            Xuất dữ liệu bệnh án (.json)
-                          </span>
-                          <span className="text-[10px] text-[#FDA4AF]/65 block mt-0.5 leading-relaxed font-sans">
-                            Tải về tệp bản sao bảo mật chứa toàn bộ bệnh án lưu trữ trong trình duyệt của bạn.
-                          </span>
-                        </div>
-                      </button>
-
-                      {/* Import file upload container */}
-                      <div className="p-5 bg-[#0E0314] border border-[#3E1444]/70 rounded-2xl relative space-y-2 flex flex-col items-start justify-center">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
-                          <Upload className="w-4 h-4 text-indigo-300" />
-                        </div>
-                        <div className="w-full">
-                          <span className="text-xs font-bold text-slate-100 block font-comfortaa">
-                            Khôi phục từ tệp sao lưu (.json)
-                          </span>
-                          <input
-                            type="file"
-                            accept=".json"
-                            onChange={handleImportFile}
-                            className="hidden"
-                            id="user-records-import-upload"
-                          />
-                          <label
-                            htmlFor="user-records-import-upload"
-                            className="inline-flex items-center gap-1 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 hover:border-indigo-500/70 text-indigo-200 hover:text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all mt-2.5 cursor-pointer uppercase tracking-wider font-mono self-start"
-                          >
-                            📁 Chọn tệp tin để nạp
-                          </label>
-
-                          {importError && (
-                            <span className="text-[10px] text-red-400 block mt-1.5 font-bold">
-                              ✗ {importError}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        {/* Export button */}
+                        <button
+                          type="button"
+                          onClick={handleExportBackup}
+                          className="p-5 bg-[#0E0314] hover:bg-[#2A1137]/40 border border-[#3E1444]/70 hover:border-[#E11D48]/70 rounded-2xl text-left transition duration-200 cursor-pointer space-y-2 flex flex-col items-start justify-center w-full"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-[#E11D48]/15 border border-[#E11D48]/25 flex items-center justify-center">
+                            <Download className="w-4 h-4 text-[#FDA4AF]" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-slate-100 block font-comfortaa">
+                              Xuất dữ liệu bệnh án (.json)
                             </span>
-                          )}
-                          {importSuccess && (
-                            <span className="text-[10px] text-emerald-400 block mt-1.5 font-bold">
-                              ✓ Nạp dữ liệu thành công!
+                            <span className="text-[10px] text-[#FDA4AF]/65 block mt-0.5 leading-relaxed font-sans">
+                              Tải về tệp bản sao bảo mật chứa toàn bộ bệnh án lưu trữ trong trình duyệt của bạn.
                             </span>
-                          )}
+                          </div>
+                        </button>
+
+                        {/* Import file upload container */}
+                        <div className="p-5 bg-[#0E0314] border border-[#3E1444]/70 rounded-2xl relative space-y-2 flex flex-col items-start justify-center">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
+                            <Upload className="w-4 h-4 text-indigo-300" />
+                          </div>
+                          <div className="w-full">
+                            <span className="text-xs font-bold text-slate-100 block font-comfortaa">
+                              Khôi phục từ tệp sao lưu (.json)
+                            </span>
+                            <input
+                              type="file"
+                              accept=".json"
+                              onChange={handleImportFile}
+                              className="hidden"
+                              id="user-records-import-upload"
+                            />
+                            <label
+                              htmlFor="user-records-import-upload"
+                              className="inline-flex items-center gap-1 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 hover:border-indigo-500/70 text-indigo-200 hover:text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all mt-2.5 cursor-pointer uppercase tracking-wider font-mono self-start"
+                            >
+                              📁 Chọn tệp tin để nạp
+                            </label>
+
+                            {importError && (
+                              <span className="text-[10px] text-red-400 block mt-1.5 font-bold">
+                                ✗ {importError}
+                              </span>
+                            )}
+                            {importSuccess && (
+                              <span className="text-[10px] text-emerald-400 block mt-1.5 font-bold">
+                                ✓ Nạp dữ liệu thành công!
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

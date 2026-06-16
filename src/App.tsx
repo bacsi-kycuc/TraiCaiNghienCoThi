@@ -1484,6 +1484,59 @@ export default function App() {
                       );
                     })}
                   </div>
+
+                  {/* Dynamic Department Info Banner with description */}
+                  {(() => {
+                    const activeGenreObj = genres.find((g) => g.name === activeGenreFilter);
+                    return (
+                      <div className="mt-4 pt-4 border-t border-[var(--zone-border)]/55 animate-[in_0.2s_ease-out]">
+                        <div className="p-3.5 rounded-2xl bg-[var(--zone-primary-lighter)]/70 border border-[var(--zone-border)]/40 relative overflow-hidden backdrop-blur-xs">
+                          {/* Decorative blur circle */}
+                          <div className="absolute top-0 right-0 w-20 h-20 bg-[var(--zone-primary)]/5 rounded-full blur-xl pointer-events-none -mr-4 -mt-4" />
+                          
+                          {activeGenreFilter ? (
+                            <div className="relative z-10 space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-base shrink-0 bg-[var(--zone-primary)]/10 w-7 h-7 rounded-lg border border-[var(--zone-primary)]/20 flex items-center justify-center">
+                                  {activeGenreObj?.icon || "🏨"}
+                                </span>
+                                <div>
+                                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--zone-primary)] block leading-none">
+                                    Thông tin chuyên khoa
+                                  </span>
+                                  <span className="font-bold text-xs text-[var(--text)] font-comfortaa block mt-1">
+                                    {activeGenreObj?.name}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] leading-relaxed italic pl-0.5 mt-2 font-medium whitespace-pre-wrap">
+                                {activeGenreObj?.description || "Nhà điều hành chưa cập nhật mô tả chi tiết cho chuyên khoa này."}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="relative z-10 space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-base shrink-0 bg-[var(--zone-primary)]/10 w-7 h-7 rounded-lg border border-[var(--zone-primary)]/20 flex items-center justify-center">
+                                  🗂️
+                                </span>
+                                <div>
+                                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--zone-primary)] block leading-none">
+                                    Tổng hành dinh điều dưỡng
+                                  </span>
+                                  <span className="font-bold text-xs text-[var(--text)] font-comfortaa block mt-1">
+                                    Tất Cả Chuyên Khoa
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] leading-relaxed italic pl-0.5 mt-2 font-medium">
+                                Nơi hiển thị phác đồ tổng hợp toàn viện. Hãy chọn một chuyên khoa phục hồi tâm hồn ở trên để tìm hiểu sâu phác đồ đặc trị!
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </aside>
 
                 {/* Main Contents catalog list */}
@@ -1672,6 +1725,7 @@ export default function App() {
         settings={settings}
         onImportBackup={handleImportBackup}
         isOfflineMode={isOfflineMode}
+        isAdmin={isAdmin}
       />
 
       {/* 2. Admin Credentials Lock modal */}

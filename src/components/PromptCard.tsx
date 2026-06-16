@@ -238,16 +238,6 @@ export default function PromptCard({
 
         {/* Cột nút Actions */}
         <div className="flex items-center gap-2 shrink-0 justify-end mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-[var(--zone-border)] relative z-10">
-          {onVote && (
-            <div className="shrink-0 mr-1 scale-90 md:scale-95">
-              <VoteHeartWidget
-                characterId={prompt.id.toString()}
-                votes={votes}
-                onVote={onVote}
-              />
-            </div>
-          )}
-
           <a
             href={prompt.url}
             target="_blank"
@@ -258,6 +248,15 @@ export default function PromptCard({
             <ExternalLink className="w-3.5 h-3.5" />
             Bé đến đây!
           </a>
+
+          {onVote && (
+            <VoteHeartWidget
+              characterId={prompt.id.toString()}
+              votes={votes}
+              onVote={onVote}
+              isCompact={true}
+            />
+          )}
 
           {isAdmin && (
             <button
@@ -423,17 +422,7 @@ export default function PromptCard({
 
       <div className="relative z-10 pointer-events-none">
         <div className="pointer-events-auto relative">
-          {onVote && (
-            <div className="absolute top-0 right-0 z-20 scale-90 md:scale-95">
-              <VoteHeartWidget
-                characterId={prompt.id.toString()}
-                votes={votes}
-                onVote={onVote}
-              />
-            </div>
-          )}
-
-          <h3 className="text-lg font-bold text-[var(--zone-primary)] pr-24 flex items-center gap-1.5 leading-snug">
+          <h3 className="text-lg font-bold text-[var(--zone-primary)] flex items-center gap-1.5 leading-snug">
             <span>{prompt.icon || "📝"}</span>
             <span>{prompt.title}</span>
             {hasPassword && (
@@ -487,26 +476,39 @@ export default function PromptCard({
         </div>
       </div>
 
-      <div className="mt-5 pt-3 border-t border-[var(--zone-border)] flex flex-wrap gap-2 items-center justify-between relative z-10">
-        <a
-          href={prompt.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleOpenPrompt}
-          className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-extrabold text-xs shadow-md transition hover:scale-105 border border-violet-500/20"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          Bé đến đây!
-        </a>
-
-        {isAdmin && (
-          <button
-            onClick={() => onEdit(prompt)}
-            className="inline-flex items-center gap-1 bg-slate-100/10 hover:bg-[var(--zone-primary-lighter)] text-[var(--text)] border border-[var(--zone-border)] hover:border-[var(--zone-primary)] hover:text-[var(--zone-primary)] px-3 py-1.5 rounded-xl font-bold text-xs transition duration-250 cursor-pointer"
+      <div className="mt-5 pt-3 border-t border-[var(--zone-border)] flex items-center justify-between relative z-10 w-full gap-2">
+        <div className="flex items-center gap-2">
+          <a
+            href={prompt.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleOpenPrompt}
+            className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-extrabold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
           >
-            <Edit2 className="w-3 h-3" />
-            Sửa
-          </button>
+            <ExternalLink className="w-3.5 h-3.5" />
+            Bé đến đây!
+          </a>
+
+          {isAdmin && (
+            <button
+              onClick={() => onEdit(prompt)}
+              className="inline-flex items-center gap-1 bg-slate-100/10 hover:bg-[var(--zone-primary-lighter)] text-[var(--text)] border border-[var(--zone-border)] hover:border-[var(--zone-primary)] hover:text-[var(--zone-primary)] px-3 py-1.5 rounded-xl font-bold text-xs transition duration-250 cursor-pointer whitespace-nowrap"
+            >
+              <Edit2 className="w-3 h-3" />
+              Sửa
+            </button>
+          )}
+        </div>
+
+        {onVote && (
+          <div className="shrink-0">
+            <VoteHeartWidget
+              characterId={prompt.id.toString()}
+              votes={votes}
+              onVote={onVote}
+              isCompact={true}
+            />
+          </div>
         )}
       </div>
 
