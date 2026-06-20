@@ -57,6 +57,7 @@ import {
   syncAllCothiData,
   requestPersistentStorage,
   checkStoragePersisted,
+  saveToIndexedDB,
 } from "./lib/indexedDbBackup";
 
 export default function App() {
@@ -166,18 +167,24 @@ export default function App() {
   };
 
   // --- Theme Wallpapers, links & audio states ---
-  const [settings, setSettings] = useState<Settings>({
-    discordLink: "https://discord.gg",
-    facebookLink: "https://facebook.com",
-    welcomeBgImage: "",
-    welcomeBgFileName: "",
-    hospitalBgImage: "",
-    hospitalBgFileName: "",
-    cainhienBgImage: "",
-    cainhienBgFileName: "",
-    musicName: "Lullaby of Co Thi (Mặc định)",
-    musicData: "",
-    musicUrl: "",
+  const [settings, setSettings] = useState<Settings>(() => {
+    const localMusicName = localStorage.getItem("user_musicName");
+    const localMusicData = localStorage.getItem("user_musicData");
+    const localMusicUrl = localStorage.getItem("user_musicUrl");
+
+    return {
+      discordLink: "https://discord.gg",
+      facebookLink: "https://facebook.com",
+      welcomeBgImage: "",
+      welcomeBgFileName: "",
+      hospitalBgImage: "",
+      hospitalBgFileName: "",
+      cainhienBgImage: "",
+      cainhienBgFileName: "",
+      musicName: localMusicName !== null ? localMusicName : "Lullaby of Co Thi (Mặc định)",
+      musicData: localMusicData !== null ? localMusicData : "",
+      musicUrl: localMusicUrl !== null ? localMusicUrl : "",
+    };
   });
 
   // --- Active Filters ---
@@ -226,7 +233,15 @@ export default function App() {
       
       // Load Settings
       if (backup.settings) {
-        setSettings(backup.settings);
+        const localMusicName = localStorage.getItem("user_musicName");
+        const localMusicData = localStorage.getItem("user_musicData");
+        const localMusicUrl = localStorage.getItem("user_musicUrl");
+        setSettings({
+          ...backup.settings,
+          musicName: localMusicName !== null ? localMusicName : backup.settings.musicName,
+          musicData: localMusicData !== null ? localMusicData : backup.settings.musicData,
+          musicUrl: localMusicUrl !== null ? localMusicUrl : backup.settings.musicUrl,
+        });
       } else {
         const defaultSettingsData: Settings = {
           discordLink: "https://discord.gg",
@@ -241,6 +256,13 @@ export default function App() {
           musicData: "",
           musicUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
         };
+        const localMusicName = localStorage.getItem("user_musicName");
+        const localMusicData = localStorage.getItem("user_musicData");
+        const localMusicUrl = localStorage.getItem("user_musicUrl");
+        if (localMusicName !== null) defaultSettingsData.musicName = localMusicName;
+        if (localMusicData !== null) defaultSettingsData.musicData = localMusicData;
+        if (localMusicUrl !== null) defaultSettingsData.musicUrl = localMusicUrl;
+
         setSettings(defaultSettingsData);
         localStorage.setItem("local_settings", JSON.stringify(defaultSettingsData));
       }
@@ -496,7 +518,16 @@ export default function App() {
       settingsDocRef,
       (snapshot) => {
         if (snapshot.exists()) {
-          setSettings(snapshot.data() as Settings);
+          const remoteData = snapshot.data() as Settings;
+          const localMusicName = localStorage.getItem("user_musicName");
+          const localMusicData = localStorage.getItem("user_musicData");
+          const localMusicUrl = localStorage.getItem("user_musicUrl");
+          setSettings({
+            ...remoteData,
+            musicName: localMusicName !== null ? localMusicName : remoteData.musicName,
+            musicData: localMusicData !== null ? localMusicData : remoteData.musicData,
+            musicUrl: localMusicUrl !== null ? localMusicUrl : remoteData.musicUrl,
+          });
         } else {
           // Seed initial default settings to Firestore
           const defaultSettingsData: Settings = {
@@ -893,6 +924,20 @@ export default function App() {
   }) => {
     // 1. Update React Local States
     setSettings(backupData.settings);
+    if (backupData.settings) {
+      if (backupData.settings.musicName !== undefined) {
+        localStorage.setItem("user_musicName", backupData.settings.musicName);
+        saveToIndexedDB("user_musicName", backupData.settings.musicName).catch((e) => console.warn(e));
+      }
+      if (backupData.settings.musicData !== undefined) {
+        localStorage.setItem("user_musicData", backupData.settings.musicData);
+        saveToIndexedDB("user_musicData", backupData.settings.musicData).catch((e) => console.warn(e));
+      }
+      if (backupData.settings.musicUrl !== undefined) {
+        localStorage.setItem("user_musicUrl", backupData.settings.musicUrl);
+        saveToIndexedDB("user_musicUrl", backupData.settings.musicUrl).catch((e) => console.warn(e));
+      }
+    }
     setGenres(backupData.genres);
     setPromptsHospital(backupData.prompts.filter((p) => p.zone === "hospital"));
     setPromptsCaiNghien(backupData.prompts.filter((p) => p.zone === "cai-nghien"));
@@ -944,6 +989,12 @@ export default function App() {
 
   // Main system datasets mutations
   const handleSaveSettings = async (key: keyof Settings, value: any) => {
+    // If it is a personal music setting, safeguard it in local storage under dedicated user keys
+    if (key === "musicName" || key === "musicData" || key === "musicUrl") {
+      localStorage.setItem(`user_${key}`, value);
+      saveToIndexedDB(`user_${key}`, value).catch((e) => console.warn(e));
+    }
+
     if (isOfflineMode) {
       setSettings((prev) => {
         const updated = { ...prev, [key]: value };
@@ -954,6 +1005,14 @@ export default function App() {
       return;
     }
     try {
+      setSettings((prev) => ({ ...prev, [key]: value }));
+
+      // If it is raw music data and it is excessively large, skip uploading huge stream bytes to global Firestore
+      if (key === "musicData" && typeof value === 'string' && value.length > 50000) {
+        setToastMessage("💾 Đã lưu tập tin âm nhạc thành công vào trình duyệt của bạn!");
+        return;
+      }
+
       const settingsDocRef = doc(db, "settings", "global_settings");
       await setDoc(settingsDocRef, { [key]: value }, { merge: true });
     } catch (err) {
