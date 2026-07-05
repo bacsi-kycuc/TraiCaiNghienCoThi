@@ -1,0 +1,218 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Comfortaa:wght@500;700&family=Space+Grotesk:wght@500;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-comfortaa: "Comfortaa", cursive;
+  --font-mono: "Space Grotesk", sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+
+  --color-witchy-midnight: #240321;
+  --color-witchy-smoky: #4F3841;
+  --color-witchy-velvet: #957F89;
+  --color-witchy-haze: #CFC3E4;
+  --color-witchy-dust: #FFFAFB;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom CSS variables designed from user Shades of Black and Shades of Gray palettes + Witchy Palette */
+:root {
+  /* Witchy design palette colors */
+  --witchy-midnight: #240321;   /* Midnight Coven */
+  --witchy-smoky: #4F3841;      /* Smoky Altar */
+  --witchy-velvet: #957F89;     /* Worn Velvet */
+  --witchy-haze: #CFC3E4;       /* Astral Haze */
+  --witchy-dust: #FFFAFB;       /* Moon Dust */
+
+  /* Permanent Dark Mode & Witchy Design Custom Color Combination */
+  --bg: #150213;                /* Extremely deep purple-black background */
+  --bg2: #240321;               /* Midnight Coven for structural header/sidebar/panels */
+  --bg3: #1B011A;               /* Secondary dark background */
+  --card: #2D1429;              /* Warm purple/indigo card background */
+  --border: #4F3841;            /* Smoky Altar for subtle, elegant divider lines */
+  --border2: #957F89;           /* Worn Velvet for highlighted borders */
+  --primary: #CFC3E4;           /* Astral Haze - soft violet for primary triggers & tags */
+  --primary-light: #FFFAFB;     /* Moon Dust - high visibility accents */
+  --accent: #957F89;            /* Worn Velvet highlights */
+  --success: #3D2D3B;           /* Velvet tint for success backgrounds */
+  --text: #FFFAFB;              /* Moon Dust for highly readable classical text */
+  --text-muted: #CFC3E4;        /* Astral Haze for secondary information text */
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 12px 30px rgba(17, 1, 15, 0.6);
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Unified dark host zone palettes based on Witchy Color Combinations */
+  --zone-primary: #CFC3E4;      /* Astral Haze */
+  --zone-primary-light: #957F89; /* Worn Velvet */
+  --zone-primary-lighter: #240321; /* Midnight Coven dark backdrops */
+  --zone-accent: #CFC3E4;       /* Astral Haze decorative highlights */
+  --zone-accent-light: #4F3841; /* Smoky Altar elements */
+  --zone-bg-gradient: linear-gradient(135deg, #150213 0%, #240321 50%, #1D021B 100%);
+  --zone-card-glow: rgba(207, 195, 228, 0.15);
+  --zone-border: #4F3841;       /* Smoky Altar frames */
+  --zone-header-bg: linear-gradient(135deg, #240321 0%, #150213 100%); /* Elegant Midnight Coven gradient */
+
+  /* Dark Witchy design layout (deep coven room) */
+  --welcome-bg: linear-gradient(160deg, #150213 0%, var(--witchy-midnight) 35%, var(--witchy-smoky) 80%, #0E000D 100%);
+  --glow-color-1: rgba(36, 3, 33, 0.75);   /* Midnight Coven dense shadow */
+  --glow-color-2: rgba(79, 56, 65, 0.65);   /* Smoky Altar fog */
+  --glow-color-3: rgba(207, 195, 228, 0.25); /* Astral Haze highlights */
+}
+
+/* Map alternate classes and states always to the dark-mode Witchy Design variables */
+:root.dark-mode, :root.zone-hospital, :root.zone-cai-nghien, :root.zone-hospital.dark-mode, :root.zone-cai-nghien.dark-mode {
+  --bg: #150213;
+  --bg2: #240321;
+  --bg3: #1B011A;
+  --card: #2D1429;
+  --border: #4F3841;
+  --border2: #957F89;
+  --primary: #CFC3E4;
+  --primary-light: #FFFAFB;
+  --accent: #957F89;
+  --success: #3D2D3B;
+  --text: #FFFAFB;
+  --text-muted: #CFC3E4;
+  --shadow: 0 12px 30px rgba(17, 1, 15, 0.6);
+  --zone-primary: var(--primary);
+  --zone-primary-light: var(--primary-light);
+  --zone-primary-lighter: var(--bg2);
+  --zone-accent: var(--accent);
+  --zone-accent-light: var(--border2);
+  --zone-bg-gradient: linear-gradient(135deg, var(--bg3) 0%, var(--bg) 50%, var(--bg2) 100%);
+  --zone-card-glow: rgba(207, 195, 228, 0.15);
+  --zone-border: var(--border);
+  --zone-header-bg: linear-gradient(135deg, #240321 0%, var(--bg2) 100%);
+}
+
+@keyframes eerieGlow {
+  0%   { opacity: 0.55; transform: scale(1); }
+  50%  { opacity: 0.95;   transform: scale(1.02); }
+  100% { opacity: 0.7; transform: scale(1.01); }
+}
+
+.eerie-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 65% 50% at 20% 80%, var(--glow-color-1) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 45% at 80% 20%, var(--glow-color-2) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, var(--glow-color-3) 0%, transparent 80%);
+  animation: eerieGlow 8s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 2.5s infinite;
+}
+
+@keyframes tickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.ticker-scroll {
+  animation: tickerScroll 8s linear infinite;
+  padding-left: 100%;
+}
+
+/* Custom Atmospheric Scrollbar design matching Smoky Altar theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #150213; /* Deep Purple Black background */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4F3841; /* Smoky Altar */
+  border-radius: 9999px;
+  border: 1px solid #150213;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #957F89; /* Worn Velvet */
+}
+
+/* Scrollbar styling for firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4F3841 #150213;
+}
+
+/* Custom premium animation keyframes for luxurious modals */
+@keyframes premiumFadeZoom {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes premiumBackdrop {
+  0% {
+    opacity: 0;
+    background-color: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+  }
+}
+
+.animate-premium-modal {
+  animation: premiumFadeZoom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-premium-backdrop {
+  animation: premiumBackdrop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes rippleEffect {
+  0% {
+    transform: scale(0);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-premium-ripple {
+  animation: rippleEffect 0.75s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+/* Utilities */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+
+
+
+

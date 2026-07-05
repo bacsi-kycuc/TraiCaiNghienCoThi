@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Trại Cai Nghiện Số",
+  "description": "Hệ thống quản lý bệnh án, chẩn đoán, phòng khám và Trại Cai Nghiện Số",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
