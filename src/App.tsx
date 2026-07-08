@@ -2318,7 +2318,9 @@ export default function App() {
                   <div className="flex flex-col md:flex-row gap-4 p-4 bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl shadow-lg backdrop-blur-md text-[var(--text)] items-center">
                     <div className="flex-1 w-full flex flex-col sm:flex-row gap-2">
                       <input
+                        id="main-search-input"
                         type="text"
+                        autoComplete="off"
                         placeholder="Tìm kiếm triệu chứng hoặc điều dưỡng..."
                         value={searchFilter || ""}
                         onChange={(e) => setSearchFilter(e.target.value)}

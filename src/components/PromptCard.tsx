@@ -143,6 +143,24 @@ export default function PromptCard({
     };
 
     setRipples((prev) => [...prev, newRipple]);
+
+    // Trigger opening/unlocking when clicking anywhere on the card
+    if (hasPassword && !isUnlocked && !isAdmin) {
+      setChallengeOpen(true);
+    } else {
+      if (onOpenPrompt) {
+        onOpenPrompt(prompt);
+      }
+      // Open the URL in a new tab programmatically since this was triggered by a card body click
+      if (prompt.url) {
+        window.open(prompt.url, "_blank", "noreferrer,noopener");
+      }
+      if (onLock && hasPassword && !isAdmin) {
+        setTimeout(() => {
+          onLock(prompt.id.toString());
+        }, 800);
+      }
+    }
   };
 
   const handleRippleEnd = (id: number) => {
@@ -287,14 +305,20 @@ export default function PromptCard({
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleVerifyPassword();
+              }}
+              className="flex flex-col sm:flex-row items-center gap-2 shrink-0"
+            >
               <div className="relative w-full sm:w-[150px]">
                 <input
                   type={showCardPassword ? "text" : "password"}
                   placeholder="Nhập mã mở..."
                   value={passwordInput || ""}
+                  autoComplete="new-password"
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
                   className="px-2.5 pr-8 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
                 />
                 <button
@@ -319,12 +343,13 @@ export default function PromptCard({
 
               <div className="flex gap-1.5">
                 <button
-                  onClick={handleVerifyPassword}
+                  type="submit"
                   className="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2.5 py-1 rounded-md font-bold transition cursor-pointer"
                 >
                   Mở Khóa
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setChallengeOpen(false);
                     setPasswordInput("");
@@ -338,7 +363,7 @@ export default function PromptCard({
                   Hủy
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         )}
 
@@ -528,52 +553,61 @@ export default function PromptCard({
             </p>
           )}
 
-          <div className="relative w-full max-w-[200px] mt-3">
-            <input
-              type={showCardPassword ? "text" : "password"}
-              placeholder="Nhập mã mở khóa..."
-              value={passwordInput || ""}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleVerifyPassword()}
-              className="px-3 pr-9 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs text-center border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
-            />
-            <button
-              type="button"
-              onClick={() => setShowCardPassword(!showCardPassword)}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer p-1.5 hover:scale-110 active:scale-90"
-              title={showCardPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-            >
-              {showCardPassword ? (
-                <EyeOff className="w-3.5 h-3.5" />
-              ) : (
-                <Eye className="w-3.5 h-3.5" />
-              )}
-            </button>
-          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleVerifyPassword();
+            }}
+            className="w-full flex flex-col items-center mt-3"
+          >
+            <div className="relative w-full max-w-[200px]">
+              <input
+                type={showCardPassword ? "text" : "password"}
+                placeholder="Nhập mã mở khóa..."
+                value={passwordInput || ""}
+                autoComplete="new-password"
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="px-3 pr-9 py-1.5 w-full bg-slate-800 text-white rounded-lg text-xs text-center border border-slate-600 focus:outline-none focus:border-purple-500 placeholder-slate-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCardPassword(!showCardPassword)}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition cursor-pointer p-1.5 hover:scale-110 active:scale-90"
+                title={showCardPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              >
+                {showCardPassword ? (
+                  <EyeOff className="w-3.5 h-3.5" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
 
-          {errorMsg && <p className="text-xs text-rose-500 mt-2">{errorMsg}</p>}
+            {errorMsg && <p className="text-xs text-rose-500 mt-2">{errorMsg}</p>}
 
-          <div className="flex gap-2 mt-3.5">
-            <button
-              onClick={handleVerifyPassword}
-              className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1 rounded-md font-bold transition cursor-pointer"
-            >
-              Mở Khóa
-            </button>
-            <button
-              onClick={() => {
-                setChallengeOpen(false);
-                setPasswordInput("");
-                setErrorMsg("");
-                if (onLock) {
-                  onLock(prompt.id.toString());
-                }
-              }}
-              className="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-3 py-1 rounded-md font-medium transition cursor-pointer"
-            >
-              Hủy
-            </button>
-          </div>
+            <div className="flex gap-2 mt-3.5">
+              <button
+                type="submit"
+                className="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1 rounded-md font-bold transition cursor-pointer"
+              >
+                Mở Khóa
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setChallengeOpen(false);
+                  setPasswordInput("");
+                  setErrorMsg("");
+                  if (onLock) {
+                    onLock(prompt.id.toString());
+                  }
+                }}
+                className="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-3 py-1 rounded-md font-medium transition cursor-pointer"
+              >
+                Hủy
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
