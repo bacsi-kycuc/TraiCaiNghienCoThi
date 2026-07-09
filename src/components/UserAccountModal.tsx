@@ -433,7 +433,7 @@ export default function UserAccountModal({
                   </span>
                   <input
                     type="text"
-                    value={currentUser}
+                    value={currentUser || ""}
                     disabled
                     className="w-full pl-10 pr-3 py-2 bg-black/60 border border-purple-500/10 rounded-xl text-xs text-slate-400 outline-none cursor-not-allowed italic font-medium"
                   />
@@ -452,7 +452,7 @@ export default function UserAccountModal({
                   <input
                     type="text"
                     placeholder="Nhập tên biệt danh tùy ý..."
-                    value={displayName}
+                    value={displayName || ""}
                     onChange={(e) => setDisplayName(e.target.value)}
                     disabled={loading}
                     maxLength={20}
@@ -473,7 +473,7 @@ export default function UserAccountModal({
                   <input
                     type="text"
                     placeholder="Nhập icon của bé đi~"
-                    value={selectedAvatar}
+                    value={selectedAvatar || ""}
                     onChange={(e) => setSelectedAvatar(e.target.value)}
                     disabled={loading}
                     maxLength={10}
@@ -500,7 +500,7 @@ export default function UserAccountModal({
                 <input
                   type="password"
                   placeholder="Nhập mật khẩu đang dùng..."
-                  value={oldPassword}
+                  value={oldPassword || ""}
                   onChange={(e) => setOldPassword(e.target.value)}
                   disabled={loading}
                   className="w-full px-3.5 py-2 bg-black/40 border border-purple-500/25 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-600 transition"
@@ -515,7 +515,7 @@ export default function UserAccountModal({
                 <input
                   type="password"
                   placeholder="Mật khẩu mới (tối thiểu 7 ký tự)..."
-                  value={newPassword}
+                  value={newPassword || ""}
                   onChange={(e) => setNewPassword(e.target.value)}
                   disabled={loading}
                   className="w-full px-3.5 py-2 bg-black/40 border border-purple-500/25 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-600 transition"
@@ -530,7 +530,7 @@ export default function UserAccountModal({
                 <input
                   type="password"
                   placeholder="Xác nhận lại mật khẩu mới..."
-                  value={confirmNewPassword}
+                  value={confirmNewPassword || ""}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
                   disabled={loading}
                   className="w-full px-3.5 py-2 bg-black/40 border border-purple-500/25 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-600 transition"
@@ -634,7 +634,7 @@ export default function UserAccountModal({
               <input
                 type="text"
                 placeholder="Nhập câu trả lời của bé tại đây..."
-                value={deletionAnswer}
+                value={deletionAnswer || ""}
                 onChange={(e) => setDeletionAnswer(e.target.value)}
                 disabled={loading}
                 className="w-full px-3 py-2.5 bg-black/60 border border-rose-500/20 focus:border-rose-400 rounded-xl outline-none text-xs text-white placeholder-slate-600 transition"

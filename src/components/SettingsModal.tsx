@@ -135,6 +135,12 @@ export default function SettingsModal({
     setLocalMusicName(settings.musicName || "");
   }, [settings.musicName]);
 
+  // Synchronize discordUrl and facebookUrl when settings props load/change
+  useEffect(() => {
+    setDiscordUrl(settings.discordLink || "");
+    setFacebookUrl(settings.facebookLink || "");
+  }, [settings.discordLink, settings.facebookLink]);
+
   if (!isOpen) return null;
 
   const handleImageUpload = (

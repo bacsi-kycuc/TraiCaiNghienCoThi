@@ -1510,7 +1510,8 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, "prompts", docId), promptDoc);
+      const cleanedPromptDoc = JSON.parse(JSON.stringify(promptDoc));
+      await setDoc(doc(db, "prompts", docId), cleanedPromptDoc);
       setToastMessage(`✅ Đã lưu bệnh án: ${data.title}`);
     } catch (err) {
       if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
