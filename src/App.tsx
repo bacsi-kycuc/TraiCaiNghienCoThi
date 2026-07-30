@@ -30,6 +30,7 @@ import {
   deleteDoc,
   getDocFromServer,
   increment,
+  writeBatch,
 } from "firebase/firestore";
 
 // Subcomponents helper importations
@@ -47,6 +48,10 @@ import TrollPopup from "./components/TrollPopup";
 import UserAuthModal from "./components/UserAuthModal";
 import VipZoneView from "./components/VipZoneView";
 import UserAccountModal from "./components/UserAccountModal";
+import ScrollToTopButton from "./components/ScrollToTopButton";
+import ClickEffectManager from "./components/ClickEffectManager";
+
+const siteHeaderBannerImg = "https://i.postimg.cc/xd0cPtcG/b0e2fa25b7a5b594c8086d9faa59e346.jpg";
 
 // Default mock values
 import {
@@ -808,6 +813,11 @@ export default function App() {
     };
     testConnection();
 
+    // Guard flags to prevent repeated auto-seeding write queue saturation
+    let hasSeededSettings = false;
+    let hasSeededPrompts = false;
+    let hasSeededRecords = false;
+
     // 4. Firestore collection snapshot listeners with auto-seeding
 
     // a. Settings synchronization
@@ -826,7 +836,8 @@ export default function App() {
             musicData: localMusicData !== null ? localMusicData : remoteData.musicData,
             musicUrl: localMusicUrl !== null ? localMusicUrl : remoteData.musicUrl,
           });
-        } else {
+        } else if (!hasSeededSettings) {
+          hasSeededSettings = true;
           // Seed initial default settings to Firestore
           const defaultSettingsData: Settings = {
             discordLink: "https://discord.gg",
@@ -884,22 +895,22 @@ export default function App() {
           const cList = loaded.filter((x) => x.zone === "cai-nghien");
           setPromptsHospital(hList);
           setPromptsCaiNghien(cList);
-        } else {
-          // Seed default prompts
-          defaultPromptsHospital.forEach((p) => {
-            const docId = `prompt_${p.id}`;
-            setDoc(doc(db, "prompts", docId), p).catch((err) => {
+        } else if (!hasSeededPrompts) {
+          hasSeededPrompts = true;
+          // Seed default prompts using a single batch
+          try {
+            const batch = writeBatch(db);
+            [...defaultPromptsHospital, ...defaultPromptsCaiNghien].forEach((p) => {
+              batch.set(doc(db, "prompts", `prompt_${p.id}`), p);
+            });
+            batch.commit().catch((err) => {
               console.warn("Ghi đè Prompts thất bại: ", err);
               loadOfflineFallbackData();
             });
-          });
-          defaultPromptsCaiNghien.forEach((p) => {
-            const docId = `prompt_${p.id}`;
-            setDoc(doc(db, "prompts", docId), p).catch((err) => {
-              console.warn("Ghi đè Prompts thất bại: ", err);
-              loadOfflineFallbackData();
-            });
-          });
+          } catch (err) {
+            console.warn("Lỗi tạo batch Prompts: ", err);
+            loadOfflineFallbackData();
+          }
         }
       },
       (err) => {
@@ -919,15 +930,22 @@ export default function App() {
           });
           loaded.sort((a, b) => b.id - a.id);
           setRecords(loaded);
-        } else {
-          // Seed default records
-          defaultRegRecords.forEach((r) => {
-            const docId = `record_${r.id}`;
-            setDoc(doc(db, "records", docId), r).catch((err) => {
+        } else if (!hasSeededRecords) {
+          hasSeededRecords = true;
+          // Seed default records using a single batch
+          try {
+            const batch = writeBatch(db);
+            defaultRegRecords.forEach((r) => {
+              batch.set(doc(db, "records", `record_${r.id}`), r);
+            });
+            batch.commit().catch((err) => {
               console.warn("Ghi đè Sổ chẩn trị thất bại: ", err);
               loadOfflineFallbackData();
             });
-          });
+          } catch (err) {
+            console.warn("Lỗi tạo batch Records: ", err);
+            loadOfflineFallbackData();
+          }
         }
       },
       (err) => {
@@ -1764,6 +1782,7 @@ export default function App() {
             }}
             discordLink={settings.discordLink}
             facebookLink={settings.facebookLink}
+            welcomeBgImage={settings.welcomeBgImage}
           />
         )}
 
@@ -1775,15 +1794,25 @@ export default function App() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="app-bg min-h-screen p-4 md:p-6 pb-24 transition-all duration-500 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: getActiveAppWallpaper() }}
+            style={{ 
+              backgroundImage: getActiveAppWallpaper(),
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+              backgroundAttachment: "fixed"
+            }}
           >
             <div className="max-w-[1360px] mx-auto space-y-6">
               {/* Console Header */}
               <header
-                style={{ background: "var(--zone-header-bg)" }}
-                className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 md:px-7 rounded-3xl text-white shadow-xl relative backdrop-blur-sm z-[9999]"
+                style={{ 
+                  backgroundImage: `linear-gradient(to right, rgba(14, 3, 20, 0.72), rgba(30, 8, 40, 0.45), rgba(14, 3, 20, 0.72)), url('${siteHeaderBannerImg}')`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+                className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 md:px-7 rounded-3xl text-white shadow-[0_12px_36px_rgba(0,0,0,0.65)] border border-purple-400/40 relative overflow-hidden backdrop-blur-md z-[9999]"
               >
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto relative z-10">
                   <div
                     onClick={() => {
                       setCurrentScreen("welcome");
@@ -1792,14 +1821,22 @@ export default function App() {
                     }}
                     className="logo-title flex items-center gap-3 cursor-pointer group active:scale-95 transition"
                   >
-                    <span className="text-3xl drop-shadow select-none">🏨</span>
+                    <span className="text-3xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] select-none">🏨</span>
                     <div className="flex flex-col items-start">
-                      <h1 className="font-comfortaa text-lg md:text-xl font-bold tracking-wide select-none text-white group-hover:text-amber-200 transition-colors">
+                      <h1 
+                        style={{
+                          textShadow: '0 2px 10px rgba(0, 0, 0, 0.95), 0 0 15px rgba(168, 85, 247, 0.7), 0 0 5px rgba(0, 0, 0, 1)'
+                        }}
+                        className="font-comfortaa text-lg md:text-xl font-bold tracking-wide select-none text-white group-hover:text-amber-200 transition-colors"
+                      >
                         VIỆN TÂM THẦN CỐ THỊ
                       </h1>
                       <span
-                        style={{ fontFamily: '"Be Vietnam Pro", sans-serif' }}
-                        className="text-[10px] md:text-xs text-slate-300 group-hover:text-amber-100 transition-colors opacity-90 font-medium italic mt-0.5 max-w-[320px] md:max-w-[450px] leading-tight"
+                        style={{ 
+                          fontFamily: '"Be Vietnam Pro", sans-serif',
+                          textShadow: '0 1px 6px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.9)'
+                        }}
+                        className="text-[10px] md:text-xs text-slate-200 group-hover:text-amber-100 transition-colors opacity-95 font-medium italic mt-0.5 max-w-[320px] md:max-w-[450px] leading-tight"
                       >
                         Nơi bệnh nhân bị tạm giam nghiêm ngặt để cải tạo tâm
                         tưởng.
@@ -2738,6 +2775,12 @@ export default function App() {
           {...activeTrollConfig}
         />
       )}
+
+      {/* Floating Scroll to Top button */}
+      <ScrollToTopButton />
+
+      {/* Global Click Sticker & Kaomoji Popup Effect */}
+      <ClickEffectManager />
     </div>
   );
 }

@@ -309,17 +309,17 @@ export default function PromptModal({
           <div className="form-group p-3.5 bg-purple-500/10 border border-purple-500/20 dark:border-purple-800/40 rounded-2xl space-y-1.5">
             <label className="flex items-center gap-2 text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">
               <BookOpen className="w-4 h-4 text-purple-500" />
-              <span>📖 Thông Tin Plot / Cốt Truyện Tham Khảo</span>
+              <span>🔗 Link Plot / Thông Tin Tham Khảo</span>
             </label>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-              Bệnh nhân sẽ đọc được thông tin này khi bấm vào nút "Plot" trên thẻ bệnh án để tham khảo trước.
+              Nhập liên kết (URL) thông tin hoặc lý lịch điều dưỡng. Khi người dùng bấm nút "Plot", web sẽ chuyển hướng sang trang này.
             </p>
-            <textarea
-              rows={4}
+            <input
+              type="text"
               value={plot || ""}
               onChange={(e) => setPlot(e.target.value)}
-              placeholder="Nhập nội dung Plot / Cốt truyện / Tiểu sử sơ bộ về điều dưỡng tại đây..."
-              className="w-full px-3 py-2 border border-purple-300 dark:border-purple-800/60 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl outline-none focus:ring-1 focus:ring-purple-500 text-xs leading-relaxed"
+              placeholder="https://..."
+              className="w-full px-3 py-2 border border-purple-300 dark:border-purple-800/60 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl outline-none focus:ring-1 focus:ring-purple-500 text-xs"
             />
           </div>
 

@@ -12,6 +12,7 @@ interface WelcomeScreenProps {
   onLogout: () => void;
   discordLink: string;
   facebookLink: string;
+  welcomeBgImage?: string;
 }
 
 export default function WelcomeScreen({
@@ -23,8 +24,19 @@ export default function WelcomeScreen({
   onLoginClick,
   onLogout,
   discordLink,
-  facebookLink
+  facebookLink,
+  welcomeBgImage
 }: WelcomeScreenProps) {
+
+  // Generate dynamic background style
+  const bgStyle: React.CSSProperties = {
+    backgroundImage: welcomeBgImage
+      ? `linear-gradient(rgba(10, 5, 22, 0.45), rgba(10, 5, 22, 0.65)), url("${welcomeBgImage}")`
+      : 'var(--welcome-bg)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  };
 
   return (
     <motion.div
@@ -32,8 +44,8 @@ export default function WelcomeScreen({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed inset-0 w-full h-full z-[9999] flex flex-col items-center justify-center p-5 eerie-glow"
-      style={{ background: 'var(--welcome-bg)' }}
+      className="fixed inset-0 w-full h-full z-[9999] flex flex-col items-center justify-center p-5 eerie-glow bg-cover bg-center bg-no-repeat overflow-hidden select-none"
+      style={bgStyle}
     >
       
       {/* Top right floating admin/user controls */}
@@ -68,9 +80,7 @@ export default function WelcomeScreen({
       <div className="relative z-10 space-y-3.5 text-center max-w-[620px] select-none scale-100 animate-[in_0.35s_ease-out] w-full px-4">
         
         {/* Title Block */}
-        <div className="flex flex-col items-center justify-center gap-4 mb-2">
-          <span className="text-5xl md:text-6xl drop-shadow-[0_8px_16px_rgba(36,3,33,0.15)] select-none transform hover:scale-110 transition duration-300">🏨</span>
-          
+        <div className="flex flex-col items-center justify-center gap-3 mb-2">
           <h1 
             style={{ 
               fontFamily: '"Cormorant Garamond", serif',
@@ -98,13 +108,20 @@ export default function WelcomeScreen({
         <div className="flex flex-wrap gap-5 justify-center pt-2 pb-5 w-full max-w-[500px] mx-auto">
           <div 
             onClick={() => onEnterApp('cai-nghien')}
-            className="bg-witchy-midnight/70 hover:bg-witchy-midnight/90 border border-witchy-smoky hover:border-witchy-haze text-witchy-dust rounded-[24px] p-6 w-[260px] text-center cursor-pointer transition-all duration-350 transform hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(0,0,0,0.65)] backdrop-blur-md flex flex-col items-center justify-center group shadow-md"
+            className="relative overflow-hidden rounded-[28px] px-8 py-5 w-[260px] sm:w-[300px] text-center cursor-pointer transition-all duration-300 transform hover:-translate-y-1.5 hover:scale-105 shadow-[0_12px_36px_rgba(0,0,0,0.6)] hover:shadow-[0_20px_45px_rgba(168,85,247,0.5)] border-2 border-purple-400/70 hover:border-purple-300 bg-black/40 hover:bg-black/60 backdrop-blur-md flex flex-col items-center justify-center group"
             id="welcome-enter-btn"
           >
-            <span className="text-5xl transition duration-300 transform group-hover:scale-110 mb-2 filter drop-shadow-md">🏨</span>
-            <h3 className="font-comfortaa text-witchy-dust text-xs font-extrabold mt-1 tracking-[0.12em] group-hover:text-witchy-haze transition-colors uppercase">
-              Vào Trại
-            </h3>
+            {/* Content inside */}
+            <div className="relative z-10 flex flex-col items-center justify-center py-1">
+              <h3 
+                className="font-comfortaa text-white text-lg sm:text-xl font-black tracking-[0.2em] uppercase transition-all duration-300 group-hover:scale-105"
+                style={{
+                  textShadow: '0 2px 10px rgba(0, 0, 0, 0.95), 0 0 20px rgba(168, 85, 247, 0.8), 0 0 6px rgba(0, 0, 0, 1)'
+                }}
+              >
+                Vào Trại
+              </h3>
+            </div>
           </div>
         </div>
 
