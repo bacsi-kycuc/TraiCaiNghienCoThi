@@ -15,6 +15,7 @@ export interface Prompt {
   zone: 'hospital' | 'cai-nghien';
   password?: string;
   passwordHint?: string;
+  plot?: string;
   createdAt?: string;
   updatedAt?: string;
   viewCount?: number;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Tag, Lock, Trash2, Eye, EyeOff } from "lucide-react";
+import { X, Tag, Lock, Trash2, Eye, EyeOff, BookOpen } from "lucide-react";
 import { Prompt, Genre, Settings } from "../types";
 
 interface PromptModalProps {
@@ -32,6 +32,7 @@ export default function PromptModal({
   const [icon, setIcon] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [plot, setPlot] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [enablePassword, setEnablePassword] = useState(false);
@@ -61,6 +62,7 @@ export default function PromptModal({
       setIcon(editingPrompt.icon);
       setUrl(editingPrompt.url);
       setDescription(editingPrompt.description || "");
+      setPlot(editingPrompt.plot || "");
       setTags(editingPrompt.tags || []);
       setEnablePassword(!!editingPrompt.password);
       setPassword(editingPrompt.password || "");
@@ -93,6 +95,7 @@ export default function PromptModal({
       setIcon("");
       setUrl("");
       setDescription("");
+      setPlot("");
       setTags([]);
       setEnablePassword(false);
       setPassword("");
@@ -147,6 +150,7 @@ export default function PromptModal({
         url,
         icon: icon.trim() || "📝",
         description,
+        plot,
         genre,
         tags,
         zone,
@@ -180,6 +184,7 @@ export default function PromptModal({
       setTitle("");
       setUrl("");
       setDescription("");
+      setPlot("");
       setTags([]);
       setTagInput("");
       setEnablePassword(false);
@@ -298,6 +303,23 @@ export default function PromptModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ghi chú thêm triệu chứng..."
               className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl outline-none focus:ring-1 focus:ring-[var(--zone-primary)] text-xs resize-none"
+            />
+          </div>
+
+          <div className="form-group p-3.5 bg-purple-500/10 border border-purple-500/20 dark:border-purple-800/40 rounded-2xl space-y-1.5">
+            <label className="flex items-center gap-2 text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">
+              <BookOpen className="w-4 h-4 text-purple-500" />
+              <span>📖 Thông Tin Plot / Cốt Truyện Tham Khảo</span>
+            </label>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+              Bệnh nhân sẽ đọc được thông tin này khi bấm vào nút "Plot" trên thẻ bệnh án để tham khảo trước.
+            </p>
+            <textarea
+              rows={4}
+              value={plot || ""}
+              onChange={(e) => setPlot(e.target.value)}
+              placeholder="Nhập nội dung Plot / Cốt truyện / Tiểu sử sơ bộ về điều dưỡng tại đây..."
+              className="w-full px-3 py-2 border border-purple-300 dark:border-purple-800/60 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 rounded-xl outline-none focus:ring-1 focus:ring-purple-500 text-xs leading-relaxed"
             />
           </div>
 
