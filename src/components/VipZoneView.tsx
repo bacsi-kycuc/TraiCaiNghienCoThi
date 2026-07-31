@@ -426,7 +426,7 @@ export default function VipZoneView({
                       {prompt.icon || "📝"}
                     </span>
                     <div>
-                      <h3 className="font-comfortaa text-lg font-bold text-[#ECE3ED] flex items-center gap-2">
+                      <h3 className="font-milky text-lg font-bold text-[#ECE3ED] flex items-center gap-2">
                         {prompt.title}
                       </h3>
                       <p className="text-xs text-[#D2B4C8] font-bold uppercase tracking-wider mt-1">
@@ -458,7 +458,7 @@ export default function VipZoneView({
                         <span className="block text-[9px] uppercase tracking-wider text-[#D2B4C8] font-extrabold mb-0.5">
                           🎁 Số Slot Thắng
                         </span>
-                        <span className="font-comfortaa text-sm font-extrabold text-[#ECE3ED]">
+                        <span className="font-milky text-sm font-extrabold text-[#ECE3ED]">
                           {prompt.maxWinners || 1} người
                         </span>
                       </div>
@@ -466,7 +466,7 @@ export default function VipZoneView({
                         <span className="block text-[9px] uppercase tracking-wider text-[#D2B4C8] font-extrabold mb-0.5">
                           🎟️ Tổng điểm danh
                         </span>
-                        <span className="font-comfortaa text-sm font-extrabold text-[#ECE3ED] flex items-center justify-center gap-1">
+                        <span className="font-milky text-sm font-extrabold text-[#ECE3ED] flex items-center justify-center gap-1">
                           <Users className="w-3.5 h-3.5 text-[#D2B4C8]" />
                           {participants.length}
                         </span>
@@ -492,7 +492,7 @@ export default function VipZoneView({
                           {isParticipant ? (
                             <button
                               disabled
-                              className="w-full bg-emerald-950/40 text-emerald-300 border border-emerald-500/25 py-3 rounded-2xl text-xs font-bold font-comfortaa flex items-center justify-center gap-2"
+                              className="w-full bg-emerald-950/40 text-emerald-300 border border-emerald-500/25 py-3 rounded-2xl text-xs font-bold font-milky flex items-center justify-center gap-2"
                             >
                               <CheckCircle className="w-4 h-4 text-emerald-400" />
                               Đã điểm danh. Bé chờ nhé!
@@ -500,7 +500,7 @@ export default function VipZoneView({
                           ) : (
                             <button
                               onClick={() => handleAttendance(prompt)}
-                              className="w-full bg-gradient-to-r from-[#664A5C] to-[#D2B4C8] hover:brightness-110 active:scale-98 text-white font-extrabold py-3 rounded-2xl text-xs font-comfortaa transition shadow-lg shadow-[#664A5C]/30 cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.02]"
+                              className="w-full bg-gradient-to-r from-[#664A5C] to-[#D2B4C8] hover:brightness-110 active:scale-98 text-white font-extrabold py-3 rounded-2xl text-xs font-milky transition shadow-lg shadow-[#664A5C]/30 cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.02]"
                             >
                               🎫 ĐIỂM DANH GIẬT SLOT NGAY
                             </button>
@@ -514,7 +514,7 @@ export default function VipZoneView({
                           {userIsWinner ? (
                             <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 text-center space-y-3">
                               <span className="text-3xl animate-bounce inline-block">🎉</span>
-                              <h4 className="font-comfortaa text-emerald-400 font-extrabold text-sm">
+                              <h4 className="font-milky text-emerald-400 font-extrabold text-sm">
                                 GIVEAWAY ĐÃ KẾT THÚC. ĐIỀU DƯỠNG ĐÃ CHỌN BẠN!
                               </h4>
                               <p className="text-[10px] text-slate-300 font-semibold leading-normal">
@@ -525,7 +525,7 @@ export default function VipZoneView({
                                 href={prompt.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow transition cursor-pointer hover:scale-105 active:scale-95"
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow transition cursor-pointer hover:scale-105 active:scale-95 font-milky"
                               >
                                 <Unlock className="w-3.5 h-3.5" />
                                 ĐẾN VỚI ANH ẤY NGAY 👩‍⚕️
@@ -534,12 +534,12 @@ export default function VipZoneView({
                           ) : (
                             <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 text-center space-y-2">
                               <span className="text-3xl inline-block">😭</span>
-                              <h4 className="font-comfortaa text-rose-400 font-extrabold text-xs mb-1">
+                              <h4 className="font-milky text-rose-400 font-extrabold text-xs mb-1">
                                 GIVEAWAY ĐÃ KẾT THÚC. ĐIỀU DƯỠNG ĐÃ CHỌN:
                               </h4>
                               <div className="flex flex-wrap justify-center gap-1.5 mt-2">
                                 {winners.map((w, idx) => (
-                                  <span key={idx} className="bg-[#2E212B] text-[#ECE3ED] text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-[#664A5C]/35">
+                                  <span key={idx} className="bg-[#2E212B] text-[#ECE3ED] text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-[#664A5C]/35 font-milky">
                                     🌟 {w}
                                   </span>
                                 ))}
@@ -550,7 +550,7 @@ export default function VipZoneView({
                       ) : (
                         <div className="bg-slate-950/90 border border-slate-850 rounded-2xl p-4 text-center space-y-2">
                           <span className="text-3xl inline-block">🔒</span>
-                          <h4 className="font-comfortaa text-slate-400 font-bold text-xs">
+                          <h4 className="font-milky text-slate-400 font-bold text-xs">
                             KỲ GIVEAWAY ĐÃ KẾT THÚC VÀ ĐƯỜNG LINK ĐÃ KHÓA
                           </h4>
                           <p className="text-[10px] text-slate-500 font-medium leading-relaxed">

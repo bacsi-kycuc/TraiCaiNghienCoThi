@@ -1,11 +1,26 @@
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Comfortaa:wght@500;700&family=Space+Grotesk:wght@500;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Comfortaa:wght@500;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Playball&family=Fredoka:wght@400;500;600;700&family=VT323&family=Share+Tech+Mono&family=Coiny&family=Righteous&family=Mali:wght@400;500;600;700&family=Playpen+Sans:wght@400;500;600;700&family=Metamorphous&family=Water+Brush&family=Comforter+Brush&family=Great+Vibes&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
   --font-comfortaa: "Comfortaa", cursive;
-  --font-mono: "Space Grotesk", sans-serif;
+  --font-mono: "Share Tech Mono", monospace;
   --font-serif: "Cormorant Garamond", serif;
+
+  /* Custom user-requested Vietnamese font pairings */
+  --font-cabinet: "Water Brush", "Comforter Brush", cursive; /* LNTH Cabinet of the Outlander (Textured Brush Calligraphy) */
+  --font-broadwa: "Great Vibes", cursive;               /* MTD Broadwa 2 (Elegant flowing script with beautiful loops and full VN support) */
+  --font-darling: "Mali", cursive;                     /* 1FTV Welcome Darling (Bouncy, sweet handwriting with hearts style) */
+  --font-truck: "Coiny", cursive;                      /* Truck Unicode style (Thick Rounded Stamp, full VN support!) */
+  --font-script: "Playball", cursive;                  /* VIP Broline Script Equivalent (Elegant Luxury Script) */
+  --font-lovelista: "Fredoka", sans-serif;              /* VN Lovelista Equivalent (Bubbly Sweet Rounded) */
+  --font-fixedsys: "VT323", monospace;                 /* Fixedsys 3.01 Equivalent (Retro Monospace Pixel) */
+  --font-luckycoin: "Coiny", cursive;                  /* DL Lucky Coin Equivalent (Thick Rounded Stamps) */
+  --font-yahoo: "Mali", cursive;                       /* Changed to Mali for that cute custom bouncy Darling look requested */
+  --font-milky: "Mali", cursive;                       /* VIP Cheese Milky style (Bouncy rounded handwriting) */
+  --font-harmoni: "Comfortaa", cursive;                /* Comfortaa cursive, gorgeous and perfectly rendered in VN */
+  --font-gochi: "Mali", cursive;                       /* Map Gochi Hand to Mali to avoid broken diacritics */
+  --font-playpen: "Playpen Sans", cursive;             /* Playpen Sans */
 
   --color-witchy-midnight: #240321;
   --color-witchy-smoky: #4F3841;

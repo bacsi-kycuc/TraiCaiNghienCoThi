@@ -1827,16 +1827,15 @@ export default function App() {
                         style={{
                           textShadow: '0 2px 10px rgba(0, 0, 0, 0.95), 0 0 15px rgba(168, 85, 247, 0.7), 0 0 5px rgba(0, 0, 0, 1)'
                         }}
-                        className="font-comfortaa text-lg md:text-xl font-bold tracking-wide select-none text-white group-hover:text-amber-200 transition-colors"
+                        className="font-cabinet text-lg md:text-xl font-medium tracking-wider select-none text-white group-hover:text-amber-200 transition-colors"
                       >
-                        VIỆN TÂM THẦN CỐ THỊ
+                        Viện Tâm Thần Cố Thị
                       </h1>
                       <span
                         style={{ 
-                          fontFamily: '"Be Vietnam Pro", sans-serif',
                           textShadow: '0 1px 6px rgba(0, 0, 0, 0.95), 0 0 3px rgba(0, 0, 0, 0.9)'
                         }}
-                        className="text-[10px] md:text-xs text-slate-200 group-hover:text-amber-100 transition-colors opacity-95 font-medium italic mt-0.5 max-w-[320px] md:max-w-[450px] leading-tight"
+                        className="font-gochi text-xs md:text-sm text-slate-200 group-hover:text-amber-100 transition-colors opacity-95 tracking-wide mt-1.5 max-w-[320px] md:max-w-[450px] leading-tight"
                       >
                         Nơi bệnh nhân bị tạm giam nghiêm ngặt để cải tạo tâm
                         tưởng.
@@ -2252,7 +2251,7 @@ export default function App() {
                   >
                 {/* Sidebar filter catalog */}
                 <aside className="bg-[var(--card)]/90 border-2 border-[var(--zone-border)] rounded-3xl p-5 shadow-lg backdrop-blur-md text-[var(--text)]">
-                  <h2 className="text-sm font-bold font-comfortaa text-[var(--zone-primary)] border-b border-[var(--zone-border)] pb-2 mb-4">
+                  <h2 className="text-sm font-bold font-milky text-[var(--zone-primary)] border-b border-[var(--zone-border)] pb-2 mb-4">
                     🏨 Danh Khoa Cai Nghiện
                   </h2>
                   <div className="flex flex-wrap gap-2">
@@ -2261,7 +2260,7 @@ export default function App() {
                         setActiveGenreFilter("");
                         setActiveTagFilter("");
                       }}
-                      className={`px-3 py-2 rounded-xl cursor-pointer font-bold text-xs transition flex items-center gap-1.5 border border-[var(--zone-border)]/40 hover:scale-105 ${!activeGenreFilter ? "bg-[var(--zone-primary)] text-white shadow" : "bg-[var(--zone-primary-lighter)] text-[var(--text-muted)] hover:text-[var(--zone-primary)]"}`}
+                      className={`font-milky px-3 py-2 rounded-xl cursor-pointer font-bold text-xs transition flex items-center gap-1.5 border border-[var(--zone-border)]/40 hover:scale-105 ${!activeGenreFilter ? "bg-[var(--zone-primary)] text-white shadow" : "bg-[var(--zone-primary-lighter)] text-[var(--text-muted)] hover:text-[var(--zone-primary)]"}`}
                     >
                       🗂️ Xem Tất Cả
                     </div>
@@ -2274,7 +2273,7 @@ export default function App() {
                             setActiveGenreFilter(g.name);
                             setActiveTagFilter("");
                           }}
-                          className={`px-3 py-2 rounded-xl cursor-pointer font-bold text-xs transition flex items-center gap-1.5 border border-[var(--zone-border)]/40 hover:scale-105 ${isSelected ? "bg-[var(--zone-primary)] text-white shadow" : "bg-[var(--zone-primary-lighter)] text-[var(--text-muted)] hover:text-[var(--zone-primary)]"}`}
+                          className={`font-milky px-3 py-2 rounded-xl cursor-pointer font-bold text-xs transition flex items-center gap-1.5 border border-[var(--zone-border)]/40 hover:scale-105 ${isSelected ? "bg-[var(--zone-primary)] text-white shadow" : "bg-[var(--zone-primary-lighter)] text-[var(--text-muted)] hover:text-[var(--zone-primary)]"}`}
                         >
                           <span>{g.icon}</span>
                           <span>{g.name}</span>

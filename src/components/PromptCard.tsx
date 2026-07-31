@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { ExternalLink, Edit2, Lock, Unlock, Eye, EyeOff, BookOpen } from "lucide-react";
+import { ExternalLink, Edit2, Lock, Unlock, Eye, EyeOff, BookOpen, Calendar, Clock, Sparkles } from "lucide-react";
 import { Prompt } from "../types";
 import VoteHeartWidget from "./VoteHeartWidget";
 
@@ -58,6 +58,36 @@ export default function PromptCard({
   }
 
   const hasPassword = !!prompt.password;
+
+  // Helper to calculate days diff for "newly created" status
+  const getDaysDiff = (dateStr?: string) => {
+    if (!dateStr) return 999;
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return 999;
+      const diffTime = Math.abs(new Date().getTime() - date.getTime());
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch {
+      return 999;
+    }
+  };
+
+  const isNew = getDaysDiff(prompt.createdAt) <= 7;
+
+  // Formatting date to Vietnamese friendly format DD/MM/YYYY
+  const formatShortDate = (dateStr?: string) => {
+    if (!dateStr) return "Chưa rõ";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "Chưa rõ";
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return "Chưa rõ";
+    }
+  };
 
   const handleOpenPrompt = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (hasPassword && !isUnlocked && !isAdmin) {
@@ -151,24 +181,6 @@ export default function PromptCard({
     };
 
     setRipples((prev) => [...prev, newRipple]);
-
-    // Trigger opening/unlocking when clicking anywhere on the card
-    if (hasPassword && !isUnlocked && !isAdmin) {
-      setChallengeOpen(true);
-    } else {
-      if (onOpenPrompt) {
-        onOpenPrompt(prompt);
-      }
-      // Open the URL in a new tab programmatically since this was triggered by a card body click
-      if (prompt.url) {
-        window.open(prompt.url, "_blank", "noreferrer,noopener");
-      }
-      if (onLock && hasPassword && !isAdmin) {
-        setTimeout(() => {
-          onLock(prompt.id.toString());
-        }, 800);
-      }
-    }
   };
 
   const handleRippleEnd = (id: number) => {
@@ -191,7 +203,7 @@ export default function PromptCard({
           delay: Math.min(index * 0.05, 0.5),
         }}
         onClick={handleCardClick}
-        className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-4 shadow-sm hover:border-[var(--zone-primary)] transition-all duration-300 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer"
+        className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-4 shadow-sm hover:border-[var(--zone-primary)] transition-all duration-300 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-default"
       >
         {/* Premium ripple elements */}
         {ripples.map((ripple) => (
@@ -214,7 +226,7 @@ export default function PromptCard({
             {prompt.icon || "📝"}
           </span>
           <div className="min-w-0 pr-4 pointer-events-auto">
-            <h3 className="text-sm font-bold text-[var(--zone-primary)] flex items-center gap-1.5 leading-snug truncate">
+            <h3 className="font-milky text-sm md:text-base font-bold text-[var(--zone-primary)] flex items-center gap-1.5 leading-snug truncate">
               <span>{prompt.title}</span>
               {hasPassword && (
                 <span
@@ -234,14 +246,28 @@ export default function PromptCard({
                 {prompt.description}
               </p>
             )}
-            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+            <div className="font-fixedsys flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-2 text-[13px] tracking-wider text-[var(--text-muted)] font-medium">
               {prompt.genre && (
                 <span className="text-[10px] text-[var(--zone-primary)] font-bold bg-[var(--zone-primary-lighter)] px-2 py-0.5 rounded-md border border-[var(--zone-border)]/30">
                   {prompt.genre}
                 </span>
               )}
-              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-[var(--text-muted)] bg-slate-500/5 px-2 py-0.5 rounded-md">
-                <Eye className="w-3 h-3 opacity-70" />
+              {isNew && (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                  <Sparkles className="w-2.5 h-2.5 text-emerald-400 animate-pulse" />
+                  <span>Mới</span>
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 opacity-80" title="Ngày nhận bệnh án">
+                <Calendar className="w-3 h-3 text-slate-500" />
+                <span>Nhận hồ sơ: {formatShortDate(prompt.createdAt)}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 opacity-80" title="Thời gian cập nhật gần nhất">
+                <Clock className="w-3 h-3 text-slate-500" />
+                <span>Cập nhật: {formatShortDate(prompt.updatedAt || prompt.createdAt)}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 opacity-80">
+                <Eye className="w-3 h-3 text-slate-500" />
                 <span>{prompt.viewCount || 0} lượt xem</span>
               </span>
             </div>
@@ -271,21 +297,21 @@ export default function PromptCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-indigo-600/20 hover:from-purple-600/40 hover:via-pink-600/40 hover:to-indigo-600/40 text-purple-200 border border-purple-500/30 hover:border-purple-400 px-3 py-1.5 rounded-xl font-extrabold text-xs transition duration-200 shadow-sm hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+              className="font-yahoo inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-indigo-600/20 hover:from-purple-600/40 hover:via-pink-600/40 hover:to-indigo-600/40 text-purple-200 border border-purple-500/30 hover:border-purple-400 px-3 py-1.5 rounded-xl font-bold text-[11px] transition duration-200 shadow-sm hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
               title="Xem thông tin Plot / Cốt truyện điều dưỡng"
             >
               <BookOpen className="w-3.5 h-3.5 text-purple-400" />
-              <span>Plot</span>
+              <span>PLOT</span>
             </a>
           ) : (
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 bg-purple-600/10 text-purple-300/50 border border-purple-500/15 px-3 py-1.5 rounded-xl font-extrabold text-xs cursor-not-allowed whitespace-nowrap opacity-60"
+              className="font-yahoo inline-flex items-center gap-1.5 bg-purple-600/10 text-purple-300/50 border border-purple-500/15 px-3 py-1.5 rounded-xl font-bold text-[11px] cursor-not-allowed whitespace-nowrap opacity-60"
               title="Chưa có link Plot"
             >
               <BookOpen className="w-3.5 h-3.5 text-purple-400/40" />
-              <span>Plot</span>
+              <span>PLOT</span>
             </button>
           )}
 
@@ -294,10 +320,10 @@ export default function PromptCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleOpenPrompt}
-            className="inline-flex items-center gap-1 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl font-extrabold text-xs shadow-md transition hover:scale-105 border border-violet-500/20"
+            className="font-yahoo inline-flex items-center gap-1 bg-violet-600 hover:bg-violet-500 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            Bé đến đây!
+            BÉ ĐẾN ĐÂY!
           </a>
 
           {onVote && (
@@ -463,7 +489,7 @@ export default function PromptCard({
         delay: Math.min(index * 0.05, 0.5), // Max delay of 0.5s to prevent long waits
       }}
       onClick={handleCardClick}
-      className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-5 shadow-lg hover:border-[var(--zone-primary)] transition-all duration-300 relative overflow-hidden flex flex-col justify-between cursor-pointer"
+      className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-5 shadow-lg hover:border-[var(--zone-primary)] transition-all duration-300 relative overflow-hidden flex flex-col justify-between cursor-default"
     >
       {/* Premium ripple elements */}
       {ripples.map((ripple) => (
@@ -482,7 +508,7 @@ export default function PromptCard({
 
       <div className="relative z-10 pointer-events-none">
         <div className="pointer-events-auto relative">
-          <h3 className="text-lg font-bold text-[var(--zone-primary)] flex items-center gap-1.5 leading-snug">
+          <h3 className="font-milky text-base md:text-lg font-bold text-[var(--zone-primary)] flex items-center gap-1.5 leading-snug">
             <span>{prompt.icon || "📝"}</span>
             <span>{prompt.title}</span>
             {hasPassword && (
@@ -505,17 +531,29 @@ export default function PromptCard({
             </p>
           )}
 
-          <div className="mt-3 flex items-center justify-between gap-2">
+          {/* Medical Record Metadata Row */}
+          <div className="font-fixedsys mt-4 pt-3 border-t border-[var(--zone-border)]/40 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[14px] tracking-wider text-[var(--text-muted)] font-medium">
             {prompt.genre && (
               <span className="bg-[var(--zone-primary-lighter)] text-[var(--zone-primary)] text-xs font-bold px-2.5 py-1 rounded-lg">
                 {prompt.icon || "📁"} {prompt.genre}
               </span>
             )}
-            <span
-              className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[var(--text-muted)] bg-slate-500/5 px-2 py-0.5 rounded-md"
-              title="Số lượt xem bệnh án"
-            >
-              <Eye className="w-3.5 h-3.5 opacity-70" />
+            {isNew && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                <Sparkles className="w-3 h-3 text-emerald-400 animate-pulse" />
+                <span>Hồ sơ mới</span>
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1" title="Ngày nhận bệnh án">
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              <span>Nhận: {formatShortDate(prompt.createdAt)}</span>
+            </span>
+            <span className="inline-flex items-center gap-1" title="Thời gian cập nhật gần nhất">
+              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              <span>Cập nhật: {formatShortDate(prompt.updatedAt || prompt.createdAt)}</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Eye className="w-3.5 h-3.5 text-slate-500" />
               <span>{prompt.viewCount || 0} lượt xem</span>
             </span>
           </div>
@@ -544,21 +582,21 @@ export default function PromptCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-indigo-600/20 hover:from-purple-600/40 hover:via-pink-600/40 hover:to-indigo-600/40 text-purple-200 border border-purple-500/30 hover:border-purple-400 px-3 py-1.5 rounded-xl font-extrabold text-xs transition duration-200 shadow-sm hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+              className="font-yahoo inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-indigo-600/20 hover:from-purple-600/40 hover:via-pink-600/40 hover:to-indigo-600/40 text-purple-200 border border-purple-500/30 hover:border-purple-400 px-3 py-1.5 rounded-xl font-bold text-[11px] transition duration-200 shadow-sm hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
               title="Xem thông tin Plot / Cốt truyện điều dưỡng"
             >
               <BookOpen className="w-3.5 h-3.5 text-purple-400" />
-              <span>Plot</span>
+              <span>PLOT</span>
             </a>
           ) : (
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 bg-purple-600/10 text-purple-300/50 border border-purple-500/15 px-3 py-1.5 rounded-xl font-extrabold text-xs cursor-not-allowed whitespace-nowrap opacity-60"
+              className="font-yahoo inline-flex items-center gap-1.5 bg-purple-600/10 text-purple-300/50 border border-purple-500/15 px-3 py-1.5 rounded-xl font-bold text-[11px] cursor-not-allowed whitespace-nowrap opacity-60"
               title="Chưa có link Plot"
             >
               <BookOpen className="w-3.5 h-3.5 text-purple-400/40" />
-              <span>Plot</span>
+              <span>PLOT</span>
             </button>
           )}
 
@@ -567,10 +605,10 @@ export default function PromptCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleOpenPrompt}
-            className="inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-extrabold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
+            className="font-yahoo inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            Bé đến đây!
+            BÉ ĐẾN ĐÂY!
           </a>
 
           {isAdmin && (

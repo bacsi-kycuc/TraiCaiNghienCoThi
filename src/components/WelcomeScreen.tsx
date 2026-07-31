@@ -83,10 +83,9 @@ export default function WelcomeScreen({
         <div className="flex flex-col items-center justify-center gap-3 mb-2">
           <h1 
             style={{ 
-              fontFamily: '"Cormorant Garamond", serif',
               textShadow: '0 0 20px rgba(207, 195, 228, 0.45), 0 2px 4px rgba(0, 0, 0, 0.8)'
             }}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold italic tracking-[0.04em] text-witchy-dust whitespace-normal sm:whitespace-nowrap leading-tight text-center px-4 animate-[fade-in_0.8s_ease-out]"
+            className="font-cabinet text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-[0.04em] text-witchy-dust whitespace-normal sm:whitespace-nowrap leading-tight text-center px-4 animate-[fade-in_0.8s_ease-out]"
             id="welcome-site-title"
           >
             Viện Tâm Thần Cố Thị
@@ -97,9 +96,9 @@ export default function WelcomeScreen({
         
         <p 
           style={{
-            textShadow: '0 1px 4px rgba(0, 0, 0, 0.7)'
+            textShadow: '0 2px 6px rgba(0, 0, 0, 0.85)'
           }}
-          className="text-witchy-haze font-semibold text-sm md:text-base pb-5 italic tracking-wider"
+          className="font-broadwa text-witchy-haze text-2xl md:text-3xl pb-5 tracking-wide"
         >
           Chào mừng các bệnh nhân đến với Trại Cai Nghiện
         </p>
@@ -114,7 +113,7 @@ export default function WelcomeScreen({
             {/* Content inside */}
             <div className="relative z-10 flex flex-col items-center justify-center py-1">
               <h3 
-                className="font-comfortaa text-white text-lg sm:text-xl font-black tracking-[0.2em] uppercase transition-all duration-300 group-hover:scale-105"
+                className="font-broadwa text-white text-2xl sm:text-3xl tracking-wide transition-all duration-300 group-hover:scale-105"
                 style={{
                   textShadow: '0 2px 10px rgba(0, 0, 0, 0.95), 0 0 20px rgba(168, 85, 247, 0.8), 0 0 6px rgba(0, 0, 0, 1)'
                 }}
