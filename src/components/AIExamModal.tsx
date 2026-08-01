@@ -233,9 +233,9 @@ export default function AIExamModal({
               hospitalBgFileName: "",
               cainhienBgImage: "",
               cainhienBgFileName: "",
-              musicName: "Lullaby of Co Thi (Mặc định)",
+              musicName: "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
               musicData: "",
-              musicUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+              musicUrl: "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF"
             },
             genres: genres,
             prompts: [...promptsHospital, ...promptsCaiNghien],

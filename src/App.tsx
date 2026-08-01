@@ -247,9 +247,9 @@ export default function App() {
       hospitalBgFileName: "",
       cainhienBgImage: "",
       cainhienBgFileName: "",
-      musicName: localMusicName !== null ? localMusicName : "Lullaby of Co Thi (Mặc định)",
+      musicName: localMusicName !== null ? localMusicName : "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
       musicData: localMusicData !== null ? localMusicData : "",
-      musicUrl: localMusicUrl !== null ? localMusicUrl : "",
+      musicUrl: localMusicUrl !== null ? localMusicUrl : "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF",
     };
   });
 
@@ -258,6 +258,7 @@ export default function App() {
   const [activeTagFilter, setActiveTagFilter] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "priority">("newest");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // --- Popup Modals toggles ---
   const [showRegModal, setShowRegModal] = useState(false);
@@ -318,9 +319,9 @@ export default function App() {
           hospitalBgFileName: "",
           cainhienBgImage: "",
           cainhienBgFileName: "",
-          musicName: "Lullaby of Co Thi (Mặc định)",
+          musicName: "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
           musicData: "",
-          musicUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+          musicUrl: "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF",
         };
         const localMusicName = localStorage.getItem("user_musicName");
         const localMusicData = localStorage.getItem("user_musicData");
@@ -830,11 +831,14 @@ export default function App() {
           const localMusicName = localStorage.getItem("user_musicName");
           const localMusicData = localStorage.getItem("user_musicData");
           const localMusicUrl = localStorage.getItem("user_musicUrl");
+          const mergedUrl = localMusicUrl !== null ? localMusicUrl : remoteData.musicUrl;
+          const mergedName = localMusicName !== null ? localMusicName : remoteData.musicName;
+
           setSettings({
             ...remoteData,
-            musicName: localMusicName !== null ? localMusicName : remoteData.musicName,
+            musicName: mergedName === "Lullaby of Co Thi (Mặc định)" || !mergedName ? "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu" : mergedName,
             musicData: localMusicData !== null ? localMusicData : remoteData.musicData,
-            musicUrl: localMusicUrl !== null ? localMusicUrl : remoteData.musicUrl,
+            musicUrl: mergedUrl === "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" || !mergedUrl ? "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF" : mergedUrl,
           });
         } else if (!hasSeededSettings) {
           hasSeededSettings = true;
@@ -848,10 +852,10 @@ export default function App() {
             hospitalBgFileName: "",
             cainhienBgImage: "",
             cainhienBgFileName: "",
-            musicName: "Lullaby of Co Thi (Mặc định)",
+            musicName: "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
             musicData: "",
             musicUrl:
-              "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+              "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF",
           };
           setDoc(settingsDocRef, defaultSettingsData).catch((err) => {
             console.warn("Tự động dọn dẹp và chuyển sang chế độ ngoại tuyến: ", err);
@@ -981,6 +985,11 @@ export default function App() {
     }
   }, [currentZone, settings.welcomeBgImage]);
 
+  // Reset pagination on filter or category changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeGenreFilter, activeTagFilter, searchFilter, currentZone, sortOrder]);
+
   // Audio loading logic when Base64 track or direct URL updates
   useEffect(() => {
     if (audioRef.current) {
@@ -993,6 +1002,7 @@ export default function App() {
         (!!settings.musicUrl &&
           settings.musicUrl !==
             "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" &&
+          !settings.musicUrl.includes("yh2h_YwILII") &&
           settings.musicUrl !== "");
 
       if (hasCustomMusic) {
@@ -1215,7 +1225,7 @@ export default function App() {
           audioRef.current.src = settings.musicUrl;
         } else {
           audioRef.current.src =
-            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3";
+            "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF";
         }
       }
       if (audioRef.current.paused) {
@@ -1725,6 +1735,14 @@ export default function App() {
     }
     return Array.from(tagsSet).slice(0, 10);
   })();
+
+  const itemsPerPage = 7;
+  const totalPages = Math.ceil(filteredPrompts.length / itemsPerPage) || 1;
+  const activePage = Math.min(currentPage, totalPages);
+  const paginatedPrompts = filteredPrompts.slice(
+    (activePage - 1) * itemsPerPage,
+    activePage * itemsPerPage
+  );
 
   return (
     <div
@@ -2424,6 +2442,11 @@ export default function App() {
 
                   {/* Cards grid / List container */}
                   <motion.div
+                    key={`${currentZone}-${activePage}-${viewMode}`}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.35, ease: "easeInOut" }}
                     layout
                     className={
                       viewMode === "list"
@@ -2445,7 +2468,7 @@ export default function App() {
                           </span>
                         </motion.div>
                       ) : (
-                        filteredPrompts.map((p, i) => (
+                        paginatedPrompts.map((p, i) => (
                           <PromptCard
                             key={p.id}
                             prompt={p}
@@ -2474,6 +2497,66 @@ export default function App() {
                       )}
                     </AnimatePresence>
                   </motion.div>
+
+                  {/* Pagination control */}
+                  {totalPages > 1 && (
+                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-[var(--card)]/60 border border-[var(--zone-border)]/50 px-5 py-3.5 rounded-3xl backdrop-blur-md">
+                      <div className="text-xs text-[var(--text-muted)] font-medium font-milky">
+                        Hiển thị <span className="font-bold text-[var(--zone-primary)]">{Math.min((activePage - 1) * itemsPerPage + 1, filteredPrompts.length)}-{Math.min(activePage * itemsPerPage, filteredPrompts.length)}</span> trong tổng số <span className="font-bold text-[var(--zone-primary)]">{filteredPrompts.length}</span> bệnh án
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          disabled={activePage === 1}
+                          onClick={() => setCurrentPage(activePage - 1)}
+                          className="px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 border-2 border-[var(--zone-border)]/50 bg-[var(--card)] hover:border-[var(--zone-primary)] text-[var(--text-muted)] hover:text-[var(--zone-primary)] disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1 cursor-pointer active:scale-95 font-milky"
+                        >
+                          ‹ Trước
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: totalPages }).map((_, idx) => {
+                            const pageNum = idx + 1;
+                            const isNear = Math.abs(pageNum - activePage) <= 1 || pageNum === 1 || pageNum === totalPages;
+                            if (!isNear) {
+                              if (pageNum === 2 || pageNum === totalPages - 1) {
+                                return <span key={pageNum} className="text-xs text-[var(--text-muted)] px-1">...</span>;
+                              }
+                              return null;
+                            }
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`w-8 h-8 flex items-center justify-center text-xs font-bold rounded-xl transition-all duration-300 relative overflow-hidden cursor-pointer font-milky ${
+                                  activePage === pageNum
+                                    ? "bg-[var(--zone-primary)] text-white shadow-md shadow-[var(--zone-primary)]/20 hover:brightness-105 active:scale-95"
+                                    : "bg-[var(--card)] border border-[var(--zone-border)] hover:border-[var(--zone-primary)] text-[var(--text-muted)] hover:text-[var(--zone-primary)] hover:scale-105"
+                                }`}
+                              >
+                                {pageNum}
+                                {activePage === pageNum && (
+                                  <motion.div
+                                    layoutId="activePageIndicator"
+                                    className="absolute inset-0 bg-gradient-to-r from-[var(--zone-primary)]/20 to-[var(--zone-primary)]/5 mix-blend-overlay pointer-events-none"
+                                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                  />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          disabled={activePage === totalPages}
+                          onClick={() => setCurrentPage(activePage + 1)}
+                          className="px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-200 border-2 border-[var(--zone-border)]/50 bg-[var(--card)] hover:border-[var(--zone-primary)] text-[var(--text-muted)] hover:text-[var(--zone-primary)] disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1 cursor-pointer active:scale-95 font-milky"
+                        >
+                          Sau ›
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </main>
               </motion.div>
               )}
@@ -2497,6 +2580,7 @@ export default function App() {
           (!!settings.musicUrl &&
             settings.musicUrl !==
               "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" &&
+            !settings.musicUrl.includes("yh2h_YwILII") &&
             settings.musicUrl !== "")
         }
       />

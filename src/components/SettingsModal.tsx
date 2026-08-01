@@ -173,7 +173,7 @@ export default function SettingsModal({
 
             const isDefaultOrEmpty =
               !localMusicName.trim() ||
-              localMusicName === "Lullaby of Co Thi (Mặc định)" ||
+              localMusicName === "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu" ||
               localMusicName.startsWith("http") ||
               localMusicName.startsWith("Mẫu nhạc trực tiếp:") ||
               localMusicName.startsWith("Nhạc liên kết:");
@@ -245,7 +245,7 @@ export default function SettingsModal({
 
     const isDefaultOrEmpty =
       !localMusicName.trim() ||
-      localMusicName === "Lullaby of Co Thi (Mặc định)" ||
+      localMusicName === "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu" ||
       localMusicName.startsWith("http") ||
       localMusicName.startsWith("Mẫu nhạc trực tiếp:") ||
       localMusicName.startsWith("Nhạc liên kết:");
@@ -544,7 +544,7 @@ export default function SettingsModal({
                   <div className="flex items-center gap-2 overflow-hidden">
                     <span className="text-lg">🎼</span>
                     <span className="text-xs font-extrabold text-[var(--primary)] truncate">
-                      {settings.musicName || "Lullaby of Co Thi (Mặc định)"}
+                      {settings.musicName || "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu"}
                     </span>
                   </div>
                   {(settings.musicData || settings.musicUrl) && (
@@ -554,9 +554,9 @@ export default function SettingsModal({
                         onSaveSettings("musicUrl", "");
                         onSaveSettings(
                           "musicName",
-                          "Lullaby of Co Thi (Mặc định)",
+                          "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
                         );
-                        setLocalMusicName("Lullaby of Co Thi (Mặc định)");
+                        setLocalMusicName("CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu");
                         alert(
                           "🗑️ Đã gỡ bỏ nhạc tự chọn và khôi phục Nhạc Nền Mặc Định!",
                         );
@@ -635,9 +635,9 @@ export default function SettingsModal({
                         if (!settings.musicUrl) {
                           onSaveSettings(
                             "musicName",
-                            "Lullaby of Co Thi (Mặc định)",
+                            "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
                           );
-                          setLocalMusicName("Lullaby of Co Thi (Mặc định)");
+                          setLocalMusicName("CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu");
                         }
                         alert("🗑️ Đã gỡ bỏ file nhạc tự tải!");
                       }}
@@ -681,9 +681,9 @@ export default function SettingsModal({
                         if (!settings.musicData) {
                           onSaveSettings(
                             "musicName",
-                            "Lullaby of Co Thi (Mặc định)",
+                            "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
                           );
-                          setLocalMusicName("Lullaby of Co Thi (Mặc định)");
+                          setLocalMusicName("CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu");
                         }
                         alert("🗑️ Đã gỡ bỏ liên kết âm nhạc!");
                       }}

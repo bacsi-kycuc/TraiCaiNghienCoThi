@@ -73,7 +73,12 @@ export default function MusicPlayer({ audioElement, musicName, musicUrl, musicDa
 
   // Autoplay and Source Change Coordination Handler
   useEffect(() => {
-    const hasCustomMusic = !!musicData || (!!musicUrl && musicUrl !== 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' && musicUrl !== '');
+    const hasCustomMusic = !!musicData || (
+      !!musicUrl && 
+      musicUrl !== 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' && 
+      !musicUrl.includes('yh2h_YwILII') && 
+      musicUrl !== ''
+    );
 
     // If it's a YouTube source, make sure standard audio is paused, and auto-play YT
     if (isYT) {
@@ -120,7 +125,7 @@ export default function MusicPlayer({ audioElement, musicName, musicUrl, musicDa
       if (isPlaying) {
         audioElement.pause();
       } else {
-        const targetSrc = musicData || musicUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3';
+        const targetSrc = musicData || musicUrl || 'https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF';
         if (audioElement.src !== targetSrc) {
           audioElement.src = targetSrc;
           audioElement.load();
@@ -132,7 +137,7 @@ export default function MusicPlayer({ audioElement, musicName, musicUrl, musicDa
     }
   };
 
-  const displayTitle = musicName || 'Lullaby of Co Thi (Mặc định)';
+  const displayTitle = musicName || 'CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu';
 
   return (
     <>
