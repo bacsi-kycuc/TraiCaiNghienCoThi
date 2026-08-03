@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, User, Lock, Trash2, LogOut, Settings, ShieldAlert, Check, HelpCircle } from "lucide-react";
+import { X, User, Lock, Trash2, LogOut, Settings, ShieldAlert, Check, HelpCircle, Palette, Upload, Image as ImageIcon } from "lucide-react";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import { StyledUsername, UserAvatar } from "./UserProfileStyle";
 
 interface UserAccountModalProps {
   isOpen: boolean;
@@ -24,6 +25,17 @@ const AVAILABLE_AVATARS = [
   { char: "🐨", label: "Koala lười biếng" },
   { char: "🐸", label: "Ếch ngồi đáy giếng" },
   { char: "🦁", label: "Sư tử hướng nội" },
+];
+
+const PRESET_COLORS = [
+  { name: "Hồng phấn", hex: "#FFB7B2" },
+  { name: "Cam sữa", hex: "#FFDAC1" },
+  { name: "Xanh mạ", hex: "#B5EAD7" },
+  { name: "Xanh trời", hex: "#A1C4FD" },
+  { name: "Xanh ngọc", hex: "#A1E3D8" },
+  { name: "Đỏ hoàng hôn", hex: "#FF9AA2" },
+  { name: "Tím Lavender", hex: "#E8C5E5" },
+  { name: "Trắng mộng", hex: "#FFFAFB" },
 ];
 
 // Funny random questions for account deletion validation (Xà lơ, hài hước)
@@ -75,7 +87,7 @@ export default function UserAccountModal({
   onAccountDeleted,
   setToastMessage,
 }: UserAccountModalProps) {
-  const [activeTab, setActiveTab] = useState<"settings" | "password">("settings");
+  const [activeTab, setActiveTab] = useState<"settings" | "appearance" | "password">("settings");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -83,6 +95,13 @@ export default function UserAccountModal({
   // Account settings states
   const [displayName, setDisplayName] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("👻");
+
+  // Visual customization states (Giao Diện)
+  const [nameColor, setNameColor] = useState("");
+  const [nameStyle, setNameStyle] = useState("none"); // "none" | "gradient" | "hologram" | "neon"
+  const [nameFont, setNameFont] = useState(""); // "" | "Lobster" | "Pacifico" | "Mali" | "Bagel Fat One" | "Times New Roman"
+  const [avatarType, setAvatarType] = useState("icon"); // "icon" | "image"
+  const [avatarImage, setAvatarImage] = useState(""); // Base64 data Url
 
   // Password change states
   const [oldPassword, setOldPassword] = useState("");
@@ -111,32 +130,53 @@ export default function UserAccountModal({
   const fetchUserData = async () => {
     setLoading(true);
     try {
+      const userKey = currentUser.toLowerCase();
       if (isOfflineMode) {
         const localUsers = JSON.parse(localStorage.getItem("local_users_fallback") || "{}");
-        const userObj = localUsers[currentUser.toLowerCase()];
+        const userObj = localUsers[userKey];
         if (userObj) {
           setDisplayName(userObj.displayName || currentUser);
           setSelectedAvatar(userObj.avatar || "👻");
+          setNameColor(userObj.nameColor || "");
+          setNameStyle(userObj.nameStyle || "none");
+          setNameFont(userObj.nameFont || "");
+          setAvatarType(userObj.avatarType || "icon");
+          setAvatarImage(userObj.avatarImage || "");
         } else {
           setDisplayName(currentUser);
           setSelectedAvatar("👻");
+          setNameColor("");
+          setNameStyle("none");
+          setNameFont("");
+          setAvatarType("icon");
+          setAvatarImage("");
         }
       } else {
-        const userDocRef = doc(db, "users", currentUser.toLowerCase());
+        const userDocRef = doc(db, "users", userKey);
         let userDoc;
         try {
           userDoc = await getDoc(userDocRef);
         } catch (err) {
-          handleFirestoreError(err, OperationType.GET, `users/${currentUser.toLowerCase()}`);
+          handleFirestoreError(err, OperationType.GET, `users/${userKey}`);
           return;
         }
         if (userDoc.exists()) {
           const data = userDoc.data();
           setDisplayName(data.displayName || data.username || currentUser);
           setSelectedAvatar(data.avatar || "👻");
+          setNameColor(data.nameColor || "");
+          setNameStyle(data.nameStyle || "none");
+          setNameFont(data.nameFont || "");
+          setAvatarType(data.avatarType || "icon");
+          setAvatarImage(data.avatarImage || "");
         } else {
           setDisplayName(currentUser);
           setSelectedAvatar("👻");
+          setNameColor("");
+          setNameStyle("none");
+          setNameFont("");
+          setAvatarType("icon");
+          setAvatarImage("");
         }
       }
     } catch (err) {
@@ -158,6 +198,52 @@ export default function UserAccountModal({
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("❌ File ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const maxSize = 256; // 256px resolution is sharp for tiny profile pictures
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx?.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85); // Compress to 85% JPEG
+        setAvatarImage(dataUrl);
+        setSuccess("📸 Tải ảnh đại diện lên thành công! Bấm 'Lưu thay đổi' để hoàn tất.");
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      setError("❌ Không thể đọc tệp tin hình ảnh!");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -170,38 +256,56 @@ export default function UserAccountModal({
 
     setLoading(true);
     try {
+      const userKey = currentUser.toLowerCase();
       if (isOfflineMode) {
         const localUsers = JSON.parse(localStorage.getItem("local_users_fallback") || "{}");
-        const userKey = currentUser.toLowerCase();
         if (localUsers[userKey]) {
           localUsers[userKey].displayName = displayName.trim();
           localUsers[userKey].avatar = selectedAvatar;
+          localUsers[userKey].nameColor = nameColor;
+          localUsers[userKey].nameStyle = nameStyle;
+          localUsers[userKey].nameFont = nameFont;
+          localUsers[userKey].avatarType = avatarType;
+          localUsers[userKey].avatarImage = avatarImage;
           localStorage.setItem("local_users_fallback", JSON.stringify(localUsers));
           
-          // Save in session storage to trigger real-time updates in app
+          // Save in cache to trigger real-time updates in app
           localStorage.setItem(`display_name_${userKey}`, displayName.trim());
           localStorage.setItem(`avatar_${userKey}`, selectedAvatar);
+          localStorage.setItem(`nameColor_${userKey}`, nameColor);
+          localStorage.setItem(`nameStyle_${userKey}`, nameStyle);
+          localStorage.setItem(`nameFont_${userKey}`, nameFont);
+          localStorage.setItem(`avatarType_${userKey}`, avatarType);
+          localStorage.setItem(`avatarImage_${userKey}`, avatarImage);
           
           setSuccess("🎉 Cập nhật cài đặt tài khoản ngoại tuyến thành công!");
           setToastMessage("✨ Đã cập nhật hồ sơ cá nhân!");
-          
-          // Trigger custom event to notify main app of changes
           window.dispatchEvent(new CustomEvent("user-profile-updated"));
         }
       } else {
-        const userDocRef = doc(db, "users", currentUser.toLowerCase());
+        const userDocRef = doc(db, "users", userKey);
         try {
           await updateDoc(userDocRef, {
             displayName: displayName.trim(),
             avatar: selectedAvatar,
+            nameColor,
+            nameStyle,
+            nameFont,
+            avatarType,
+            avatarImage,
           });
         } catch (err) {
-          handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.toLowerCase()}`);
+          handleFirestoreError(err, OperationType.UPDATE, `users/${userKey}`);
           return;
         }
 
-        localStorage.setItem(`display_name_${currentUser.toLowerCase()}`, displayName.trim());
-        localStorage.setItem(`avatar_${currentUser.toLowerCase()}`, selectedAvatar);
+        localStorage.setItem(`display_name_${userKey}`, displayName.trim());
+        localStorage.setItem(`avatar_${userKey}`, selectedAvatar);
+        localStorage.setItem(`nameColor_${userKey}`, nameColor);
+        localStorage.setItem(`nameStyle_${userKey}`, nameStyle);
+        localStorage.setItem(`nameFont_${userKey}`, nameFont);
+        localStorage.setItem(`avatarType_${userKey}`, avatarType);
+        localStorage.setItem(`avatarImage_${userKey}`, avatarImage);
 
         setSuccess("🎉 Cập nhật cài đặt tài khoản thành công!");
         setToastMessage("✨ Đã đồng bộ hồ sơ cá nhân lên đám mây!");
@@ -300,7 +404,6 @@ export default function UserAccountModal({
   };
 
   const triggerOpenDeleteModal = () => {
-    // Pick random funny question
     const randomIdx = Math.floor(Math.random() * FUNNY_QUESTIONS.length);
     setFunnyQuestion(FUNNY_QUESTIONS[randomIdx]);
     setDeletionAnswer("");
@@ -323,27 +426,31 @@ export default function UserAccountModal({
 
     setLoading(true);
     try {
+      const userKey = currentUser.toLowerCase();
       if (isOfflineMode) {
         const localUsers = JSON.parse(localStorage.getItem("local_users_fallback") || "{}");
-        const userKey = currentUser.toLowerCase();
         if (localUsers[userKey]) {
           delete localUsers[userKey];
           localStorage.setItem("local_users_fallback", JSON.stringify(localUsers));
         }
       } else {
-        const userDocRef = doc(db, "users", currentUser.toLowerCase());
+        const userDocRef = doc(db, "users", userKey);
         try {
           await deleteDoc(userDocRef);
         } catch (err) {
-          handleFirestoreError(err, OperationType.DELETE, `users/${currentUser.toLowerCase()}`);
+          handleFirestoreError(err, OperationType.DELETE, `users/${userKey}`);
           return;
         }
       }
 
       // Clear local keys
-      const userKey = currentUser.toLowerCase();
       localStorage.removeItem(`display_name_${userKey}`);
       localStorage.removeItem(`avatar_${userKey}`);
+      localStorage.removeItem(`nameColor_${userKey}`);
+      localStorage.removeItem(`nameStyle_${userKey}`);
+      localStorage.removeItem(`nameFont_${userKey}`);
+      localStorage.removeItem(`avatarType_${userKey}`);
+      localStorage.removeItem(`avatarImage_${userKey}`);
 
       setToastMessage("💥 Tài khoản của bé đã bị bốc hơi vĩnh viễn khỏi bệnh viện!");
       setShowDeleteConfirm(false);
@@ -362,7 +469,7 @@ export default function UserAccountModal({
   return (
     <>
       <div className="fixed inset-0 flex items-center justify-center z-[24000] p-4 animate-premium-backdrop">
-        <div className="bg-slate-900 border-2 border-purple-500/35 rounded-3xl p-6 w-full max-w-[430px] shadow-2xl text-purple-200 animate-premium-modal relative overflow-hidden select-none">
+        <div className="bg-slate-900 border-2 border-purple-500/35 rounded-3xl p-6 w-full max-w-[460px] max-h-[90vh] overflow-y-auto scrollbar-hide shadow-2xl text-purple-200 animate-premium-modal relative select-none">
           
           <div className="flex justify-between items-center mb-5">
             <span className="font-bold text-base font-comfortaa text-purple-300 flex items-center gap-2">
@@ -384,27 +491,43 @@ export default function UserAccountModal({
                 setError("");
                 setSuccess("");
               }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
                 activeTab === "settings"
                   ? "bg-purple-600/30 border border-purple-500/45 text-purple-100"
                   : "text-slate-400 hover:text-purple-300 hover:bg-white/5"
               }`}
             >
-              <Settings className="w-3.5 h-3.5" /> Cài đặt hồ sơ
+              <Settings className="w-3.5 h-3.5" /> Hồ Sơ
             </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("appearance");
+                setError("");
+                setSuccess("");
+              }}
+              className={`flex-1 py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                activeTab === "appearance"
+                  ? "bg-purple-600/30 border border-purple-500/45 text-purple-100"
+                  : "text-slate-400 hover:text-purple-300 hover:bg-white/5"
+              }`}
+            >
+              <Palette className="w-3.5 h-3.5" /> Giao Diện
+            </button>
+
             <button
               onClick={() => {
                 setActiveTab("password");
                 setError("");
                 setSuccess("");
               }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
                 activeTab === "password"
                   ? "bg-purple-600/30 border border-purple-500/45 text-purple-100"
                   : "text-slate-400 hover:text-purple-300 hover:bg-white/5"
               }`}
             >
-              <Lock className="w-3.5 h-3.5" /> Mật khẩu mới
+              <Lock className="w-3.5 h-3.5" /> Mật Khẩu
             </button>
           </div>
 
@@ -461,24 +584,17 @@ export default function UserAccountModal({
                 </div>
               </div>
 
-              {/* Icon đại diện Input */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">
-                  Icon đại diện:
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 text-xs">
-                    {selectedAvatar || "😊"}
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Nhập icon của bé đi~"
-                    value={selectedAvatar || ""}
-                    onChange={(e) => setSelectedAvatar(e.target.value)}
-                    disabled={loading}
-                    maxLength={10}
-                    className="w-full pl-10 pr-3 py-2 bg-black/40 border border-purple-500/20 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-600 transition"
-                  />
+              {/* Real-time Preview in Profile section */}
+              <div className="p-3.5 bg-black/30 rounded-2xl border border-purple-500/10 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase block">Xem trước danh thiếp:</span>
+                  <div className="flex items-center gap-2">
+                    <UserAvatar avatar={selectedAvatar} avatarType={avatarType} avatarImage={avatarImage} className="w-7 h-7 rounded-full object-cover" />
+                    <StyledUsername name={displayName || currentUser} color={nameColor} effect={nameStyle} font={nameFont} className="text-sm font-extrabold" />
+                  </div>
+                </div>
+                <div className="text-[10px] text-slate-500 italic">
+                  Biệt danh của bé {isOfflineMode ? "Ngoại tuyến" : "Mây"}
                 </div>
               </div>
 
@@ -488,6 +604,245 @@ export default function UserAccountModal({
                 className="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-2.5 rounded-xl text-xs transition duration-200 cursor-pointer shadow-md uppercase tracking-wider font-comfortaa"
               >
                 {loading ? "Vui lòng chờ..." : "Lưu thay đổi"}
+              </button>
+            </form>
+          ) : activeTab === "appearance" ? (
+            <form onSubmit={handleUpdateSettings} className="space-y-5">
+              {/* Profile Appearance Settings (Dọn dẹp Giao Diện) */}
+              
+              {/* Dynamic Design Preview */}
+              <div className="p-4 bg-gradient-to-r from-purple-950/20 to-indigo-950/20 rounded-2xl border-2 border-purple-500/20 space-y-2.5 relative overflow-hidden">
+                <span className="text-[9px] font-bold text-purple-400 uppercase tracking-widest block">Xem Trước Thiết Kế Hồ Sơ:</span>
+                <div className="flex items-center gap-3">
+                  <UserAvatar
+                    avatar={selectedAvatar}
+                    avatarType={avatarType}
+                    avatarImage={avatarImage}
+                    className="w-12 h-12 rounded-full border-2 border-purple-400/40 object-cover"
+                  />
+                  <div>
+                    <StyledUsername
+                      name={displayName || currentUser}
+                      color={nameColor}
+                      effect={nameStyle}
+                      font={nameFont}
+                      className="text-lg font-extrabold tracking-wide"
+                    />
+                    <div className="text-[10px] text-slate-400">@bệnh nhân số #{currentUser?.length}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 1. Chọn loại Ảnh đại diện (Icon vs Upload) */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">
+                  Ảnh Đại Diện:
+                </label>
+                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setAvatarType("icon")}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      avatarType === "icon"
+                        ? "bg-purple-600/35 border border-purple-400/30 text-white"
+                        : "text-slate-400 hover:text-purple-300"
+                    }`}
+                  >
+                    🧸 Dùng Icon Emoji
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarType("image")}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      avatarType === "image"
+                        ? "bg-purple-600/35 border border-purple-400/30 text-white"
+                        : "text-slate-400 hover:text-purple-300"
+                    }`}
+                  >
+                    📸 Tải Ảnh Riêng
+                  </button>
+                </div>
+
+                {avatarType === "icon" ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Chọn emoji hoặc nhập bất kỳ..."
+                        value={selectedAvatar}
+                        onChange={(e) => setSelectedAvatar(e.target.value)}
+                        disabled={loading}
+                        maxLength={10}
+                        className="flex-1 px-3 py-1.5 bg-black/30 border border-purple-500/20 rounded-xl outline-none text-xs text-white"
+                      />
+                    </div>
+                    {/* Suggest grid */}
+                    <div className="flex flex-wrap gap-2 p-2 bg-black/20 rounded-xl justify-center">
+                      {AVAILABLE_AVATARS.map((av) => (
+                        <button
+                          key={av.char}
+                          type="button"
+                          onClick={() => setSelectedAvatar(av.char)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm transition ${
+                            selectedAvatar === av.char ? "bg-purple-600 scale-110" : "bg-slate-800 hover:bg-slate-750"
+                          }`}
+                          title={av.label}
+                        >
+                          {av.char}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-center w-full">
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-purple-500/20 hover:border-purple-400/50 rounded-2xl cursor-pointer bg-black/10 hover:bg-black/20 transition p-2 text-center">
+                        <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                          <Upload className="w-6 h-6 text-purple-400 mb-1" />
+                          <p className="text-[10px] text-purple-300 font-bold">Kéo thả hoặc bấm để chọn ảnh của bé</p>
+                          <p className="text-[9px] text-slate-500">Rõ nét, tự động căn tỉ lệ vuông hoàn hảo (Tối đa 5MB)</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {avatarImage && (
+                      <div className="flex items-center gap-3 bg-black/30 p-2 rounded-xl">
+                        <img src={avatarImage} className="w-10 h-10 rounded-full object-cover border border-purple-500/30" alt="Preview" />
+                        <div className="flex-1">
+                          <span className="text-[10px] text-emerald-400 font-semibold block">Đã liên kết ảnh của bạn</span>
+                          <button
+                            type="button"
+                            onClick={() => setAvatarImage("")}
+                            className="text-[9px] text-rose-400 hover:underline"
+                          >
+                            Xóa bỏ ảnh tải lên
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Thiết kế màu sắc biệt danh */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">
+                  Màu Sắc Biệt Danh:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={nameColor || "#FFFAFB"}
+                    onChange={(e) => setNameColor(e.target.value)}
+                    className="w-10 h-8 rounded-lg border border-purple-500/20 cursor-pointer bg-transparent"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Nhập mã màu HEX (ví dụ: #FFD222)..."
+                    value={nameColor}
+                    onChange={(e) => setNameColor(e.target.value)}
+                    className="flex-1 px-3 py-1.5 bg-black/40 border border-purple-500/20 focus:border-purple-400 rounded-xl outline-none text-xs text-white"
+                  />
+                  {nameColor && (
+                    <button
+                      type="button"
+                      onClick={() => setNameColor("")}
+                      className="px-2.5 bg-slate-800 text-slate-400 hover:text-white rounded-xl text-[10px] font-bold"
+                    >
+                      Mặc định
+                    </button>
+                  )}
+                </div>
+
+                {/* Preset colors */}
+                <div className="flex flex-wrap gap-1.5 p-2 bg-black/20 rounded-xl justify-center">
+                  {PRESET_COLORS.map((clr) => (
+                    <button
+                      key={clr.hex}
+                      type="button"
+                      onClick={() => setNameColor(clr.hex)}
+                      className="w-5 h-5 rounded-full relative transition duration-200 hover:scale-125 focus:scale-125"
+                      style={{ backgroundColor: clr.hex }}
+                      title={clr.name}
+                    >
+                      {nameColor === clr.hex && (
+                        <Check className="w-3 h-3 text-slate-900 absolute inset-0 m-auto font-bold" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Hiệu ứng tên biệt danh */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">
+                  Hiệu Ứng Danh Hiệu:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "none", label: "Mặc định (Không hiệu ứng)", desc: "Màu phẳng thanh tao" },
+                    { id: "gradient", label: "🌈 Gradient Đa Sắc", desc: "Chuyển màu mượt mà" },
+                    { id: "neon", label: "✨ Neon Thần Tiên", desc: "Phát sáng hào quang ảo" },
+                    { id: "hologram", label: "🛸 Hologram Tương Lai", desc: "Biến đổi màu liên tục" },
+                  ].map((eff) => (
+                    <button
+                      key={eff.id}
+                      type="button"
+                      onClick={() => setNameStyle(eff.id)}
+                      className={`p-2.5 rounded-xl text-left transition border ${
+                        nameStyle === eff.id
+                          ? "bg-purple-600/25 border-purple-400/50 text-white shadow-md"
+                          : "bg-black/30 border-purple-500/10 text-slate-400 hover:border-purple-500/30 hover:text-slate-200"
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold block">{eff.label}</span>
+                      <span className="text-[9px] block text-slate-500 mt-0.5 leading-tight">{eff.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Chọn phông chữ biệt danh */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">
+                  Phông Chữ Biệt Danh:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: "", label: "Mặc định", cl: "font-sans" },
+                    { id: "Lobster", label: "Lobster", cl: "font-lobster" },
+                    { id: "Pacifico", label: "Pacifico", cl: "font-pacifico" },
+                    { id: "Mali", label: "Mali Bouncy", cl: "font-mali" },
+                    { id: "Bagel Fat One", label: "Bagel Fat", cl: "font-bagelfat" },
+                    { id: "Times New Roman", label: "Times Serif", cl: "font-times" },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setNameFont(f.id)}
+                      className={`p-2 rounded-xl transition border text-center ${
+                        nameFont === f.id
+                          ? "bg-purple-600/25 border-purple-400/50 text-white"
+                          : "bg-black/30 border-purple-500/10 text-slate-400 hover:border-purple-500/30"
+                      }`}
+                    >
+                      <span className={`text-xs block ${f.cl}`}>{f.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-2.5 rounded-xl text-xs transition duration-200 cursor-pointer shadow-md uppercase tracking-wider font-comfortaa"
+              >
+                {loading ? "Vui lòng chờ..." : "Lưu thay đổi Giao diện"}
               </button>
             </form>
           ) : (
@@ -554,7 +909,7 @@ export default function UserAccountModal({
                 onClick={() => setShowLogoutConfirm(true)}
                 className="flex-1 py-2 px-3.5 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
               >
-                <LogOut className="w-3.5 h-3.5" /> Đăng xuất tài khoản
+                <LogOut className="w-3.5 h-3.5" /> Đăng xuất
               </button>
 
               <button

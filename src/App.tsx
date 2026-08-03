@@ -48,6 +48,7 @@ import TrollPopup from "./components/TrollPopup";
 import UserAuthModal from "./components/UserAuthModal";
 import VipZoneView from "./components/VipZoneView";
 import UserAccountModal from "./components/UserAccountModal";
+import { StyledUsername, UserAvatar } from "./components/UserProfileStyle";
 import ScrollToTopButton from "./components/ScrollToTopButton";
 import ClickEffectManager from "./components/ClickEffectManager";
 
@@ -113,6 +114,11 @@ export default function App() {
   });
   const [userDisplayName, setUserDisplayName] = useState("");
   const [userAvatar, setUserAvatar] = useState("👻");
+  const [userNameColor, setUserNameColor] = useState("");
+  const [userNameStyle, setUserNameStyle] = useState("none");
+  const [userNameFont, setUserNameFont] = useState("");
+  const [userAvatarType, setUserAvatarType] = useState("icon");
+  const [userAvatarImage, setUserAvatarImage] = useState("");
   const [showUserAccountModal, setShowUserAccountModal] = useState(false);
   const [showUserAuthModal, setShowUserAuthModal] = useState(false);
   const [viewingVipZone, setViewingVipZone] = useState(false);
@@ -689,11 +695,21 @@ export default function App() {
       if (!currentUser) {
         setUserDisplayName("");
         setUserAvatar("👻");
+        setUserNameColor("");
+        setUserNameStyle("none");
+        setUserNameFont("");
+        setUserAvatarType("icon");
+        setUserAvatarImage("");
         return;
       }
       if (currentUser === "Admin") {
         setUserDisplayName("Admin");
         setUserAvatar("👑");
+        setUserNameColor("");
+        setUserNameStyle("none");
+        setUserNameFont("");
+        setUserAvatarType("icon");
+        setUserAvatarImage("");
         return;
       }
 
@@ -701,9 +717,19 @@ export default function App() {
       const userKey = currentUser.toLowerCase();
       const cachedName = localStorage.getItem(`display_name_${userKey}`);
       const cachedAvatar = localStorage.getItem(`avatar_${userKey}`);
+      const cachedColor = localStorage.getItem(`nameColor_${userKey}`);
+      const cachedStyle = localStorage.getItem(`nameStyle_${userKey}`);
+      const cachedFont = localStorage.getItem(`nameFont_${userKey}`);
+      const cachedAvType = localStorage.getItem(`avatarType_${userKey}`);
+      const cachedAvImg = localStorage.getItem(`avatarImage_${userKey}`);
       
       if (cachedName) setUserDisplayName(cachedName);
       if (cachedAvatar) setUserAvatar(cachedAvatar);
+      if (cachedColor) setUserNameColor(cachedColor);
+      if (cachedStyle) setUserNameStyle(cachedStyle);
+      if (cachedFont) setUserNameFont(cachedFont);
+      if (cachedAvType) setUserAvatarType(cachedAvType);
+      if (cachedAvImg) setUserAvatarImage(cachedAvImg);
 
       // Always fetch fresh from Firestore / local users fallback if possible to ensure sync
       try {
@@ -713,10 +739,27 @@ export default function App() {
           if (userObj) {
             const dName = userObj.displayName || currentUser;
             const av = userObj.avatar || "👻";
+            const clr = userObj.nameColor || "";
+            const stl = userObj.nameStyle || "none";
+            const fnt = userObj.nameFont || "";
+            const avT = userObj.avatarType || "icon";
+            const avI = userObj.avatarImage || "";
+
             setUserDisplayName(dName);
             setUserAvatar(av);
+            setUserNameColor(clr);
+            setUserNameStyle(stl);
+            setUserNameFont(fnt);
+            setUserAvatarType(avT);
+            setUserAvatarImage(avI);
+
             localStorage.setItem(`display_name_${userKey}`, dName);
             localStorage.setItem(`avatar_${userKey}`, av);
+            localStorage.setItem(`nameColor_${userKey}`, clr);
+            localStorage.setItem(`nameStyle_${userKey}`, stl);
+            localStorage.setItem(`nameFont_${userKey}`, fnt);
+            localStorage.setItem(`avatarType_${userKey}`, avT);
+            localStorage.setItem(`avatarImage_${userKey}`, avI);
           }
         } else {
           const userDocRef = doc(db, "users", userKey);
@@ -725,10 +768,27 @@ export default function App() {
             const data = userDoc.data();
             const dName = data.displayName || data.username || currentUser;
             const av = data.avatar || "👻";
+            const clr = data.nameColor || "";
+            const stl = data.nameStyle || "none";
+            const fnt = data.nameFont || "";
+            const avT = data.avatarType || "icon";
+            const avI = data.avatarImage || "";
+
             setUserDisplayName(dName);
             setUserAvatar(av);
+            setUserNameColor(clr);
+            setUserNameStyle(stl);
+            setUserNameFont(fnt);
+            setUserAvatarType(avT);
+            setUserAvatarImage(avI);
+
             localStorage.setItem(`display_name_${userKey}`, dName);
             localStorage.setItem(`avatar_${userKey}`, av);
+            localStorage.setItem(`nameColor_${userKey}`, clr);
+            localStorage.setItem(`nameStyle_${userKey}`, stl);
+            localStorage.setItem(`nameFont_${userKey}`, fnt);
+            localStorage.setItem(`avatarType_${userKey}`, avT);
+            localStorage.setItem(`avatarImage_${userKey}`, avI);
           }
         }
       } catch (err) {
@@ -1776,6 +1836,11 @@ export default function App() {
             currentUser={currentUser}
             userDisplayName={userDisplayName}
             userAvatar={userAvatar}
+            userNameColor={userNameColor}
+            userNameStyle={userNameStyle}
+            userNameFont={userNameFont}
+            userAvatarType={userAvatarType}
+            userAvatarImage={userAvatarImage}
             onLoginClick={() => setShowUserAuthModal(true)}
             onLogout={() => {
               if (currentUser === "Admin" || isAdmin) {
@@ -1875,15 +1940,22 @@ export default function App() {
                             setShowUserAccountModal(true);
                           }
                         }}
-                        className="flex items-center gap-1.5 font-extrabold text-xs text-purple-300 hover:text-white transition hover:scale-105 active:scale-95 bg-purple-900/40 px-2 py-1 rounded-xl border border-purple-500/15 cursor-pointer"
+                        className="flex items-center gap-2 font-extrabold text-xs text-purple-300 hover:text-white transition hover:scale-105 active:scale-95 bg-purple-900/40 px-2.5 py-1.5 rounded-xl border border-purple-500/15 cursor-pointer"
                         title={currentUser === "Admin" ? "Quản lý cài đặt" : "Cài đặt tài khoản của bạn"}
                       >
-                        <span className="text-sm leading-none shrink-0">
-                          {currentUser === "Admin" ? "👑" : userAvatar}
-                        </span>
-                        <span>
-                          {currentUser === "Admin" ? "Admin" : "Tài khoản"}
-                        </span>
+                        <UserAvatar 
+                          avatar={currentUser === "Admin" ? "👑" : userAvatar} 
+                          avatarType={currentUser === "Admin" ? "icon" : userAvatarType} 
+                          avatarImage={currentUser === "Admin" ? "" : userAvatarImage} 
+                          className="w-5 h-5 rounded-full object-cover shrink-0" 
+                        />
+                        <StyledUsername 
+                          name={currentUser === "Admin" ? "Admin" : (userDisplayName || currentUser)} 
+                          color={currentUser === "Admin" ? "" : userNameColor} 
+                          effect={currentUser === "Admin" ? "none" : userNameStyle} 
+                          font={currentUser === "Admin" ? "" : userNameFont} 
+                          className="text-xs font-extrabold leading-none" 
+                        />
                       </button>
 
                       {/* VIP Zone tab horizontally aligned next to Account button */}

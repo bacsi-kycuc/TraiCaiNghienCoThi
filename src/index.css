@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Comfortaa:wght@500;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Playball&family=Fredoka:wght@400;500;600;700&family=VT323&family=Share+Tech+Mono&family=Coiny&family=Righteous&family=Mali:wght@400;500;600;700&family=Playpen+Sans:wght@400;500;600;700&family=Metamorphous&family=Water+Brush&family=Comforter+Brush&family=Great+Vibes&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Comfortaa:wght@500;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Playball&family=Fredoka:wght@400;500;600;700&family=VT323&family=Share+Tech+Mono&family=Coiny&family=Righteous&family=Mali:wght@400;500;600;700&family=Playpen+Sans:wght@400;500;600;700&family=Metamorphous&family=Water+Brush&family=Comforter+Brush&family=Great+Vibes&family=Lobster&family=Pacifico&family=Bagel+Fat+One&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -226,6 +226,54 @@ html {
     display: none;
   }
 }
+
+/* Custom User Name Styling & Effects */
+@keyframes hologramShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.effect-hologram {
+  background: linear-gradient(90deg, #ff9a9e, #fecfef, #a1c4fd, #c2e9fb, #e0c3fc, #ff9a9e);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: hologramShimmer 6s ease infinite;
+  display: inline-block;
+}
+
+.effect-gradient {
+  background: linear-gradient(135deg, var(--grad-start, #ff9a9e) 0%, var(--grad-end, #fecfef) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+.effect-neon {
+  text-shadow: 0 0 5px var(--neon-color, rgba(168, 85, 247, 0.8)), 0 0 12px var(--neon-color, rgba(168, 85, 247, 0.4));
+}
+
+.font-lobster {
+  font-family: 'Lobster', cursive !important;
+}
+
+.font-pacifico {
+  font-family: 'Pacifico', cursive !important;
+}
+
+.font-mali {
+  font-family: 'Mali', cursive !important;
+}
+
+.font-bagelfat {
+  font-family: 'Bagel Fat One', cursive !important;
+}
+
+.font-times {
+  font-family: 'Times New Roman', Times, serif !important;
+}
+
 
 
 

@@ -67,6 +67,23 @@
         "musicData": { "type": "string" },
         "musicUrl": { "type": "string" }
       }
+    },
+    "User": {
+      "title": "User",
+      "description": "Psychiatric patient account with visual style and interface preferences",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatar": { "type": "string" },
+        "nameColor": { "type": "string" },
+        "nameStyle": { "type": "string" },
+        "nameFont": { "type": "string" },
+        "avatarType": { "type": "string" },
+        "avatarImage": { "type": "string" }
+      },
+      "required": ["username", "password"]
     }
   },
   "firestore": {
@@ -85,6 +102,10 @@
     "settings": {
       "schema": "Settings",
       "description": "Global settings and app customization"
+    },
+    "users": {
+      "schema": "User",
+      "description": "Dream patient account custom settings and credentials"
     }
   }
 }

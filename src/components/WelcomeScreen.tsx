@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Key, User, LogOut, MessageSquare, ThumbsUp } from 'lucide-react';
+import { StyledUsername, UserAvatar } from './UserProfileStyle';
 
 interface WelcomeScreenProps {
   onEnterApp: (zone: 'hospital' | 'cai-nghien') => void;
@@ -8,6 +9,11 @@ interface WelcomeScreenProps {
   currentUser: string | null;
   userDisplayName: string;
   userAvatar: string;
+  userNameColor?: string;
+  userNameStyle?: string;
+  userNameFont?: string;
+  userAvatarType?: string;
+  userAvatarImage?: string;
   onLoginClick: () => void;
   onLogout: () => void;
   discordLink: string;
@@ -21,6 +27,11 @@ export default function WelcomeScreen({
   currentUser,
   userDisplayName,
   userAvatar,
+  userNameColor,
+  userNameStyle,
+  userNameFont,
+  userAvatarType,
+  userAvatarImage,
   onLoginClick,
   onLogout,
   discordLink,
@@ -60,9 +71,9 @@ export default function WelcomeScreen({
           </button>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="bg-witchy-dust/80 dark:bg-witchy-midnight/85 text-witchy-smoky dark:text-witchy-dust font-bold py-2 px-4 rounded-2xl border border-witchy-velvet/30 dark:border-witchy-smoky text-xs backdrop-blur-md flex items-center gap-1.5 shadow-md">
-              <span className="text-sm shrink-0">{userAvatar}</span>
-              <span>{userDisplayName}</span>
+            <span className="bg-witchy-dust/80 dark:bg-witchy-midnight/85 text-witchy-smoky dark:text-witchy-dust font-bold py-1.5 px-3 rounded-2xl border border-witchy-velvet/30 dark:border-witchy-smoky text-xs backdrop-blur-md flex items-center gap-2 shadow-md">
+              <UserAvatar avatar={userAvatar} avatarType={userAvatarType} avatarImage={userAvatarImage} className="w-5 h-5 rounded-full object-cover" />
+              <StyledUsername name={userDisplayName} color={userNameColor} effect={userNameStyle} font={userNameFont} className="font-extrabold" />
             </span>
             <button 
               onClick={onLogout}
