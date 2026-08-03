@@ -1893,9 +1893,9 @@ export default function App() {
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}
-                className="flex flex-col md:flex-row items-center justify-between gap-4 p-5 md:px-7 rounded-3xl text-white shadow-[0_12px_36px_rgba(0,0,0,0.65)] border border-purple-400/40 relative overflow-hidden backdrop-blur-md z-[9999]"
+                className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center p-5 md:px-7 rounded-3xl text-white shadow-[0_12px_36px_rgba(0,0,0,0.65)] border border-purple-400/40 relative overflow-visible backdrop-blur-md z-[9999]"
               >
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto relative z-10">
+                <div className="lg:col-span-7 flex flex-col md:flex-row items-center gap-4 w-full relative z-10">
                   <div
                     onClick={() => {
                       setCurrentScreen("welcome");
@@ -1928,7 +1928,7 @@ export default function App() {
                 </div>
 
                 {/* Header Right controllers */}
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
+                <div className="lg:col-span-5 flex items-center gap-3 w-full justify-start lg:justify-end flex-wrap relative z-10">
                   {/* Custom User Account display */}
                   {currentUser ? (
                     <div className="flex items-center gap-2.5 bg-purple-950/45 border border-purple-500/25 px-3 py-1.5 rounded-2xl text-xs text-purple-200 relative">
