@@ -110,5 +110,10 @@ service cloud.firestore {
         && incoming(request).musicUrl is string && incoming(request).musicUrl.size() <= 2000;
       allow delete: if true;
     }
+
+    // Real-time Votes Collection
+    match /votes/{characterId} {
+      allow read, write: if true;
+    }
   }
 }

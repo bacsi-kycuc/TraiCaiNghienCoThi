@@ -84,6 +84,14 @@
         "avatarImage": { "type": "string" }
       },
       "required": ["username", "password"]
+    },
+    "Vote": {
+      "title": "Vote",
+      "description": "Real-time user vote tally for doctors or nurses",
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer" }
+      }
     }
   },
   "firestore": {
@@ -106,6 +114,10 @@
     "users": {
       "schema": "User",
       "description": "Dream patient account custom settings and credentials"
+    },
+    "votes": {
+      "schema": "Vote",
+      "description": "Real-time vote tallies for nurse and doctor cards"
     }
   }
 }

@@ -1,17 +1,21 @@
 import { motion } from 'motion/react';
-import { Award, ThumbsUp } from 'lucide-react';
+import { Award, ThumbsUp, Lock } from 'lucide-react';
 import { Prompt } from '../types';
 
 interface FavoriteLeaderBannerProps {
   prompts: Prompt[];
   votesData: Record<string, number>;
   onVote: (id: string) => void;
+  currentUser?: string;
+  onOpenAuth?: () => void;
 }
 
 export default function FavoriteLeaderBanner({
   prompts,
   votesData,
-  onVote
+  onVote,
+  currentUser,
+  onOpenAuth,
 }: FavoriteLeaderBannerProps) {
   // If there are no doctors in our portal, display an elegant static card
   if (prompts.length === 0) return null;
@@ -29,6 +33,14 @@ export default function FavoriteLeaderBanner({
   });
 
   const handleVoteLeader = () => {
+    if (!currentUser) {
+      if (onOpenAuth) {
+        onOpenAuth();
+      } else {
+        onVote(leader.id.toString());
+      }
+      return;
+    }
     onVote(leader.id.toString());
   };
 
@@ -80,17 +92,31 @@ export default function FavoriteLeaderBanner({
         </span>
 
         {/* Tactile vote button with character details */}
-        <motion.button
-          type="button"
-          onClick={handleVoteLeader}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-          className="flex items-center gap-2.5 px-6 py-3 rounded-full text-white bg-[#3F2A52] hover:bg-[#75619D]/40 border border-[#BEAEDB]/40 shadow-xl active:scale-95 transition-all text-xs font-black uppercase tracking-wider cursor-pointer"
-        >
-          <ThumbsUp className="w-4 h-4 text-rose-400" />
-          <span>💼 Bấm vào để VOTE cho {leader.title}</span>
-        </motion.button>
+        {currentUser ? (
+          <motion.button
+            type="button"
+            onClick={handleVoteLeader}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-2.5 px-6 py-3 rounded-full text-white bg-[#3F2A52] hover:bg-[#75619D]/40 border border-[#BEAEDB]/40 shadow-xl active:scale-95 transition-all text-xs font-black uppercase tracking-wider cursor-pointer"
+          >
+            <ThumbsUp className="w-4 h-4 text-rose-400" />
+            <span>💼 Bấm vào để VOTE cho {leader.title}</span>
+          </motion.button>
+        ) : (
+          <motion.button
+            type="button"
+            onClick={handleVoteLeader}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-2.5 px-6 py-3 rounded-full text-amber-200 bg-[#3F2A52]/80 hover:bg-[#75619D]/50 border border-amber-400/40 shadow-xl active:scale-95 transition-all text-xs font-black uppercase tracking-wider cursor-pointer"
+          >
+            <Lock className="w-4 h-4 text-amber-400" />
+            <span>🔒 Đăng nhập để VOTE cho {leader.title}</span>
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
 }
+

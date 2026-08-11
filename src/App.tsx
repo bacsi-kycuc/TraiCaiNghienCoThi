@@ -164,40 +164,25 @@ export default function App() {
   const [promptsCaiNghien, setPromptsCaiNghien] = useState<Prompt[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [records, setRecords] = useState<RegRecord[]>([]);
-  const [votesData, setVotesData] = useState<Record<string, number>>({});
-
-  // --- Initialize & Sync Votes data in LocalStorage ---
-  useEffect(() => {
+  const [votesData, setVotesData] = useState<Record<string, number>>(() => {
     const savedVotesStr = localStorage.getItem("char_votes");
-    let localVotes: Record<string, number> = {};
     if (savedVotesStr) {
       try {
-        localVotes = JSON.parse(savedVotesStr);
+        return JSON.parse(savedVotesStr);
       } catch (e) {
         console.error("Lỗi parse votesData từ localStorage", e);
       }
     }
+    return {};
+  });
 
-    // Gộp tất cả prompts từ cả 2 phân khu để mảng dữ liệu mẫu luôn phong phú
-    const allPrompts = [...promptsHospital, ...promptsCaiNghien];
-    let hasNew = false;
-
-    allPrompts.forEach((p) => {
-      const key = p.id.toString();
-      if (localVotes[key] === undefined) {
-        // Khởi tạo lượt phiếu bầu ban đầu bằng 0 cho bác sĩ/điều dưỡng mới
-        localVotes[key] = 0;
-        hasNew = true;
-      }
-    });
-
-    if (hasNew || !savedVotesStr) {
-      localStorage.setItem("char_votes", JSON.stringify(localVotes));
+  const handleVote = async (characterId: string) => {
+    if (!currentUser) {
+      setToastMessage("🔒 Tính năng bình chọn chỉ dành cho tài khoản đã tạo trên web! Hãy đăng nhập/tạo tài khoản nhé.");
+      setShowUserAuthModal(true);
+      return;
     }
-    setVotesData(localVotes);
-  }, [promptsHospital, promptsCaiNghien]);
 
-  const handleVote = (characterId: string) => {
     const today = new Date().toLocaleDateString("sv"); // 'YYYY-MM-DD' formatting
     const savedDatesStr = localStorage.getItem("char_voted_dates");
     let votedDates: Record<string, string> = {};
@@ -236,6 +221,15 @@ export default function App() {
 
     // Trigger confetti pháo hoa rực rỡ dồi dào chúc mừng!
     window.dispatchEvent(new CustomEvent("celebrate-confetti"));
+
+    // Persist real vote count in Firestore cloud DB with atomic increment
+    try {
+      const voteDocRef = doc(db, "votes", characterId);
+      await setDoc(voteDocRef, { count: increment(1) }, { merge: true });
+    } catch (err) {
+      console.error("Lỗi lưu lượt vote lên Firestore:", err);
+      handleFirestoreError(err, OperationType.UPDATE, `votes/${characterId}`);
+    }
   };
 
   // --- Theme Wallpapers, links & audio states ---
@@ -1018,11 +1012,34 @@ export default function App() {
       },
     );
 
+    // e. Votes real-time synchronization
+    const unsubVotes = onSnapshot(
+      collection(db, "votes"),
+      (snapshot) => {
+        const remoteVotes: Record<string, number> = {};
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (typeof data.count === "number") {
+            remoteVotes[docSnap.id] = data.count;
+          }
+        });
+        setVotesData((prev) => {
+          const merged = { ...prev, ...remoteVotes };
+          localStorage.setItem("char_votes", JSON.stringify(merged));
+          return merged;
+        });
+      },
+      (err) => {
+        console.warn("Lỗi đăng ký theo dõi Votes từ Firestore, dùng dữ liệu local: ", err);
+      },
+    );
+
     return () => {
       unsubSettings();
       unsubGenres();
       unsubPrompts();
       unsubRecords();
+      unsubVotes();
     };
   }, []);
 
@@ -1254,9 +1271,20 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isAdmin]);
 
-  const handleResetVotes = () => {
+  const handleResetVotes = async () => {
     localStorage.removeItem("char_votes");
     setVotesData({});
+    try {
+      const batch = writeBatch(db);
+      const allPrompts = [...promptsHospital, ...promptsCaiNghien];
+      allPrompts.forEach((p) => {
+        const docRef = doc(db, "votes", p.id.toString());
+        batch.set(docRef, { count: 0 }, { merge: true });
+      });
+      await batch.commit();
+    } catch (err) {
+      console.error("Lỗi reset votes trên Firestore:", err);
+    }
     setToastMessage("🔄 Đã reset tất cả lượt vote về 0!");
   };
 
@@ -2433,6 +2461,8 @@ export default function App() {
                     prompts={activePrompts}
                     votesData={votesData}
                     onVote={handleVote}
+                    currentUser={currentUser}
+                    onOpenAuth={() => setShowUserAuthModal(true)}
                   />
 
                   {/* Random Roll Banner */}
@@ -2545,6 +2575,8 @@ export default function App() {
                             key={p.id}
                             prompt={p}
                             isAdmin={isAdmin}
+                            currentUser={currentUser}
+                            onOpenAuth={() => setShowUserAuthModal(true)}
                             index={i}
                             onEdit={(prompt) => {
                               setEditingPrompt(prompt);

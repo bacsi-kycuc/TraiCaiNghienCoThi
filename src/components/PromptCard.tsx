@@ -19,6 +19,8 @@ interface PromptCardProps {
   isUnlocked?: boolean;
   onUnlock?: (promptId: string) => void;
   onLock?: (promptId: string) => void;
+  currentUser?: string;
+  onOpenAuth?: () => void;
 }
 
 export default function PromptCard({
@@ -35,6 +37,8 @@ export default function PromptCard({
   isUnlocked = false,
   onUnlock,
   onLock,
+  currentUser,
+  onOpenAuth,
 }: PromptCardProps) {
   const [passwordInput, setPasswordInput] = useState("");
   const [showCardPassword, setShowCardPassword] = useState(false);
@@ -332,6 +336,8 @@ export default function PromptCard({
               votes={votes}
               onVote={onVote}
               isCompact={true}
+              isLoggedIn={!!currentUser}
+              onOpenAuth={onOpenAuth}
             />
           )}
 
@@ -629,6 +635,8 @@ export default function PromptCard({
               votes={votes}
               onVote={onVote}
               isCompact={true}
+              isLoggedIn={!!currentUser}
+              onOpenAuth={onOpenAuth}
             />
           </div>
         )}
