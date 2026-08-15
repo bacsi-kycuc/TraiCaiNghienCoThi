@@ -43,11 +43,13 @@ interface SettingsModalProps {
   promptsHospital?: Prompt[];
   promptsCaiNghien?: Prompt[];
   records?: RegRecord[];
+  votesData?: Record<string, number>;
   onImportBackup?: (backupData: {
     settings: Settings;
     genres: Genre[];
     prompts: Prompt[];
     records: RegRecord[];
+    votes?: Record<string, number>;
   }) => Promise<void>;
   isOfflineMode?: boolean;
 }
@@ -70,6 +72,7 @@ export default function SettingsModal({
   promptsHospital = [],
   promptsCaiNghien = [],
   records = [],
+  votesData = {},
   onImportBackup,
   isOfflineMode = false,
 }: SettingsModalProps) {
@@ -822,7 +825,8 @@ export default function SettingsModal({
                           settings,
                           genres,
                           prompts: [...promptsHospital, ...promptsCaiNghien],
-                          records
+                          records,
+                          votes: votesData
                         };
                         const blob = new Blob([JSON.stringify(packageToBackup, null, 2)], { type: "application/json" });
                         const url = URL.createObjectURL(blob);

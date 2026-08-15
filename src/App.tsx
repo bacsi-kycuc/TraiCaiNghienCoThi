@@ -184,7 +184,9 @@ export default function App() {
     }
 
     const today = new Date().toLocaleDateString("sv"); // 'YYYY-MM-DD' formatting
-    const savedDatesStr = localStorage.getItem("char_voted_dates");
+    const userKey = currentUser.toLowerCase();
+    const userVotedDatesKey = `char_voted_dates_${userKey}`;
+    const savedDatesStr = localStorage.getItem(userVotedDatesKey) || localStorage.getItem("char_voted_dates");
     let votedDates: Record<string, string> = {};
     if (savedDatesStr) {
       try {
@@ -200,21 +202,23 @@ export default function App() {
     const name = character ? character.title : "Bác sĩ / Điều dưỡng";
 
     if (votedDates[characterId] === today) {
-      setToastMessage(`💖 Hôm nay bé đã thả tim cho "${name}" rồi!`);
+      setToastMessage(`💖 Hôm nay bạn đã thả tim cho "${name}" rồi! Mỗi ngày được thả 1 tim cho mỗi bệnh án nha.`);
       return;
     }
 
-    // Vote is allowed, update global state & local storage
+    // Vote is allowed, update global state, local storage and IndexedDB
     setVotesData((prev) => {
       const updated = {
         ...prev,
         [characterId]: (prev[characterId] || 0) + 1,
       };
       localStorage.setItem("char_votes", JSON.stringify(updated));
+      saveToIndexedDB("char_votes", updated).catch((e) => console.warn(e));
       return updated;
     });
 
     votedDates[characterId] = today;
+    localStorage.setItem(userVotedDatesKey, JSON.stringify(votedDates));
     localStorage.setItem("char_voted_dates", JSON.stringify(votedDates));
 
     setToastMessage(`🎉 Đã bình chọn thành công cho "${name}"!`);
@@ -225,10 +229,13 @@ export default function App() {
     // Persist real vote count in Firestore cloud DB with atomic increment
     try {
       const voteDocRef = doc(db, "votes", characterId);
-      await setDoc(voteDocRef, { count: increment(1) }, { merge: true });
+      await setDoc(voteDocRef, { count: increment(1), lastVotedAt: new Date().toISOString() }, { merge: true });
+      
+      // Also update user's profile with vote record if registered
+      const userDocRef = doc(db, "users", userKey);
+      await setDoc(userDocRef, { [`votedDates.${characterId}`]: today }, { merge: true });
     } catch (err) {
-      console.error("Lỗi lưu lượt vote lên Firestore:", err);
-      handleFirestoreError(err, OperationType.UPDATE, `votes/${characterId}`);
+      console.warn("Lỗi lưu lượt vote lên Firestore (sẽ lưu ngoại tuyến):", err);
     }
   };
 
@@ -360,6 +367,12 @@ export default function App() {
       } else {
         setRecords(defaultRegRecords);
         localStorage.setItem("local_records", JSON.stringify(defaultRegRecords));
+      }
+
+      // Load Votes if available
+      if (backup.votes && Object.keys(backup.votes).length > 0) {
+        setVotesData((prev) => ({ ...prev, ...backup.votes }));
+        localStorage.setItem("char_votes", JSON.stringify(backup.votes));
       }
     } catch (e) {
       console.error("Lỗi khôi phục dữ liệu ngoại tuyến nâng cao: ", e);
@@ -1026,6 +1039,7 @@ export default function App() {
         setVotesData((prev) => {
           const merged = { ...prev, ...remoteVotes };
           localStorage.setItem("char_votes", JSON.stringify(merged));
+          saveToIndexedDB("char_votes", merged).catch((e) => console.warn(e));
           return merged;
         });
       },
@@ -1337,6 +1351,7 @@ export default function App() {
     genres: Genre[];
     prompts: Prompt[];
     records: RegRecord[];
+    votes?: Record<string, number>;
   }) => {
     // 1. Update React Local States
     setSettings(backupData.settings);
@@ -1358,13 +1373,18 @@ export default function App() {
     setPromptsHospital(backupData.prompts.filter((p) => p.zone === "hospital"));
     setPromptsCaiNghien(backupData.prompts.filter((p) => p.zone === "cai-nghien"));
     setRecords(backupData.records);
+    if (backupData.votes) {
+      setVotesData(backupData.votes);
+      localStorage.setItem("char_votes", JSON.stringify(backupData.votes));
+    }
 
     // 2. Perform Dual-Channel local writing immediately to IndexedDB and LocalStorage
     await syncAllCothiData(
       backupData.settings,
       backupData.genres,
       backupData.prompts,
-      backupData.records
+      backupData.records,
+      backupData.votes
     );
 
     setToastMessage("💾 Bản khôi phục đã áp dụng và ghi đè vào bộ nhớ máy thành công!");
@@ -1393,6 +1413,13 @@ export default function App() {
         for (const r of backupData.records) {
           const docId = `record_${r.id}`;
           await setDoc(doc(db, "records", docId), r);
+        }
+
+        // Write votes
+        if (backupData.votes) {
+          for (const [charId, count] of Object.entries(backupData.votes)) {
+            await setDoc(doc(db, "votes", charId), { count, updatedAt: new Date().toISOString() }, { merge: true });
+          }
         }
 
         setToastMessage("✨ Thành công! Đã đồng bộ toàn bộ bệnh án lên đám mây.");
@@ -2813,6 +2840,7 @@ export default function App() {
         promptsHospital={promptsHospital}
         promptsCaiNghien={promptsCaiNghien}
         records={records}
+        votesData={votesData}
         onImportBackup={handleImportBackup}
         isOfflineMode={isOfflineMode}
       />

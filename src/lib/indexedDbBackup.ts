@@ -110,13 +110,17 @@ export async function syncAllCothiData(
   settings: Settings,
   genres: Genre[],
   prompts: Prompt[],
-  records: RegRecord[]
+  records: RegRecord[],
+  votes?: Record<string, number>
 ): Promise<void> {
   // 1. Sync local storage caches (wrap individually to prevent quota errors from blocking)
   try { localStorage.setItem("local_settings", JSON.stringify(settings)); } catch (e) { console.log("local_settings quota exceeded, relying on IndexedDB"); }
   try { localStorage.setItem("local_genres", JSON.stringify(genres)); } catch (e) { console.log("local_genres quota exceeded, relying on IndexedDB"); }
   try { localStorage.setItem("local_prompts", JSON.stringify(prompts)); } catch (e) { console.log("local_prompts quota exceeded, relying on IndexedDB"); }
   try { localStorage.setItem("local_records", JSON.stringify(records)); } catch (e) { console.log("local_records quota exceeded, relying on IndexedDB"); }
+  if (votes) {
+    try { localStorage.setItem("char_votes", JSON.stringify(votes)); } catch (e) { console.log("char_votes quota exceeded, relying on IndexedDB"); }
+  }
 
   try {
     // 2. Sync permanent IndexedDB caches
@@ -124,6 +128,9 @@ export async function syncAllCothiData(
     await saveToIndexedDB("genres", genres);
     await saveToIndexedDB("prompts", prompts);
     await saveToIndexedDB("records", records);
+    if (votes) {
+      await saveToIndexedDB("char_votes", votes);
+    }
   } catch (err) {
     console.warn("[Sync] Error performing dual-backup sync:", err);
   }
@@ -137,11 +144,13 @@ export async function retrieveFullBackupState(): Promise<{
   genres: Genre[] | null;
   prompts: Prompt[] | null;
   records: RegRecord[] | null;
+  votes: Record<string, number> | null;
 }> {
   let settings: Settings | null = null;
   let genres: Genre[] | null = null;
   let prompts: Prompt[] | null = null;
   let records: RegRecord[] | null = null;
+  let votes: Record<string, number> | null = null;
 
   // Try IndexedDB first (source of truth, permanent, unbounded)
   try {
@@ -149,6 +158,7 @@ export async function retrieveFullBackupState(): Promise<{
     genres = await getFromIndexedDB<Genre[]>("genres");
     prompts = await getFromIndexedDB<Prompt[]>("prompts");
     records = await getFromIndexedDB<RegRecord[]>("records");
+    votes = await getFromIndexedDB<Record<string, number>>("char_votes");
   } catch (e) {
     console.warn("[Backup Retrieve] IndexedDB reading error:", e);
   }
@@ -171,6 +181,10 @@ export async function retrieveFullBackupState(): Promise<{
       const l = localStorage.getItem("local_records");
       if (l) records = JSON.parse(l);
     }
+    if (!votes) {
+      const l = localStorage.getItem("char_votes");
+      if (l) votes = JSON.parse(l);
+    }
   } catch (e) {
     console.warn("[Backup Retrieve] LocalStorage reading error:", e);
   }
@@ -180,6 +194,7 @@ export async function retrieveFullBackupState(): Promise<{
   try { if (genres) localStorage.setItem("local_genres", JSON.stringify(genres)); } catch(e) {}
   try { if (prompts) localStorage.setItem("local_prompts", JSON.stringify(prompts)); } catch(e) {}
   try { if (records) localStorage.setItem("local_records", JSON.stringify(records)); } catch(e) {}
+  try { if (votes) localStorage.setItem("char_votes", JSON.stringify(votes)); } catch(e) {}
 
-  return { settings, genres, prompts, records };
+  return { settings, genres, prompts, records, votes };
 }
