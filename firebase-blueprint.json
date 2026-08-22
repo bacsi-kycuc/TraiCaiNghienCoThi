@@ -141,6 +141,10 @@
     "quiz_questions": {
       "schema": "QuizQuestion",
       "description": "Quiz examination question pool"
+    },
+    "quiz_bank": {
+      "schema": "QuizQuestion",
+      "description": "Global questions document storage"
     }
   }
 }

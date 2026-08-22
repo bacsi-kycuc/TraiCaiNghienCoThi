@@ -99,5 +99,15 @@ service cloud.firestore {
     match /quiz_questions/{questionId} {
       allow read, write: if true;
     }
+
+    // Quiz Bank Global Document
+    match /quiz_bank/{bankId} {
+      allow read, write: if true;
+    }
+
+    // Connection Health Test
+    match /test/{testId} {
+      allow read, write: if true;
+    }
   }
 }
