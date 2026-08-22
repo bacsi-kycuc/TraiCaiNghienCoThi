@@ -65,7 +65,12 @@
         "cainhienBgFileName": { "type": "string" },
         "musicName": { "type": "string" },
         "musicData": { "type": "string" },
-        "musicUrl": { "type": "string" }
+        "musicUrl": { "type": "string" },
+        "quizModeEnabled": { "type": "boolean" },
+        "quizTimeLimitMinutes": { "type": "integer" },
+        "quizPassingScoreTier1": { "type": "number" },
+        "quizPassingScoreTier2": { "type": "number" },
+        "isSiteClosed": { "type": "boolean" }
       }
     },
     "User": {
@@ -92,6 +97,20 @@
       "properties": {
         "count": { "type": "integer" }
       }
+    },
+    "QuizQuestion": {
+      "title": "QuizQuestion",
+      "description": "Examination question item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "options": { "type": "array" },
+        "correctAnswer": { "type": "integer" },
+        "explanation": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["question", "options", "correctAnswer"]
     }
   },
   "firestore": {
@@ -118,6 +137,10 @@
     "votes": {
       "schema": "Vote",
       "description": "Real-time vote tallies for nurse and doctor cards"
+    },
+    "quiz_questions": {
+      "schema": "QuizQuestion",
+      "description": "Quiz examination question pool"
     }
   }
 }

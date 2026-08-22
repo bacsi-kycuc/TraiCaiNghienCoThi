@@ -87,32 +87,16 @@ service cloud.firestore {
 
     // Dynamic system configurations (Settings)
     match /settings/{settingsId} {
-      allow read: if true;
-      allow create, update: if isValidId(settingsId)
-        && incoming(request).keys().hasAll([
-          'discordLink', 'facebookLink', 
-          'welcomeBgImage', 'welcomeBgFileName', 
-          'hospitalBgImage', 'hospitalBgFileName', 
-          'cainhienBgImage', 'cainhienBgFileName', 
-          'musicName', 'musicData', 'musicUrl'
-        ])
-        && incoming(request).keys().size() == 11
-        && incoming(request).discordLink is string && incoming(request).discordLink.size() <= 2000
-        && incoming(request).facebookLink is string && incoming(request).facebookLink.size() <= 2000
-        && incoming(request).welcomeBgImage is string && incoming(request).welcomeBgImage.size() <= 15000000
-        && incoming(request).welcomeBgFileName is string && incoming(request).welcomeBgFileName.size() <= 255
-        && incoming(request).hospitalBgImage is string && incoming(request).hospitalBgImage.size() <= 15000000
-        && incoming(request).hospitalBgFileName is string && incoming(request).hospitalBgFileName.size() <= 255
-        && incoming(request).cainhienBgImage is string && incoming(request).cainhienBgImage.size() <= 15000000
-        && incoming(request).cainhienBgFileName is string && incoming(request).cainhienBgFileName.size() <= 255
-        && incoming(request).musicName is string && incoming(request).musicName.size() <= 255
-        && incoming(request).musicData is string && incoming(request).musicData.size() <= 15000000
-        && incoming(request).musicUrl is string && incoming(request).musicUrl.size() <= 2000;
-      allow delete: if true;
+      allow read, write: if isValidId(settingsId);
     }
 
     // Real-time Votes Collection
     match /votes/{characterId} {
+      allow read, write: if true;
+    }
+
+    // Quiz Questions Collection
+    match /quiz_questions/{questionId} {
       allow read, write: if true;
     }
   }
