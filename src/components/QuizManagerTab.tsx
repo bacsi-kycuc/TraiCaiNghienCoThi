@@ -86,7 +86,7 @@ export default function QuizManagerTab({
     setFormOptionC('');
     setFormOptionD('');
     setFormCorrectAnswer(0);
-    setFormCategory('Cố Thị Lore');
+    setFormCategory('Nhập từ văn bản');
     setIsCreatingNew(true);
   };
 
@@ -447,7 +447,7 @@ export default function QuizManagerTab({
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-comfortaa transition flex items-center gap-1.5 cursor-pointer shadow"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>+ Thêm Câu Mới</span>
+                  <span>Thêm Câu Mới</span>
                 </button>
                 <button
                   type="button"

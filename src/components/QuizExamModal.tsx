@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BrainCircuit, 
@@ -8,13 +8,13 @@ import {
   Sparkles, 
   ChevronRight, 
   Send, 
-  RotateCcw,
-  BookOpen,
-  Award,
-  Flame,
-  HelpCircle
+  HelpCircle,
+  Sword,
+  XCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { QuizQuestion } from '../types';
+import FruitNinjaOverlay from './FruitNinjaOverlay';
 
 interface ShuffledQuizItem {
   id: string;
@@ -66,6 +66,15 @@ export default function QuizExamModal({
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [jumpNavOpen, setJumpNavOpen] = useState(false);
 
+  // Fruit Ninja Minigame States
+  const [showFruitNinja, setShowFruitNinja] = useState(false);
+  const [hasFruitNinjaTriggered, setHasFruitNinjaTriggered] = useState(false);
+  const [disabledOptions, setDisabledOptions] = useState<Record<number, number[]>>({});
+  const [examToast, setExamToast] = useState<{
+    message: string;
+    type: 'success' | 'danger' | 'info';
+  } | null>(null);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Generate 30 random questions with shuffled options whenever exam starts
@@ -100,9 +109,13 @@ export default function QuizExamModal({
 
     setExamQuestions(prepared);
     setSelectedAnswers({});
+    setDisabledOptions({});
     setTimeLeft(timeLimitMinutes * 60);
     setExamState('in_progress');
     setShowConfirmSubmit(false);
+    setShowFruitNinja(false);
+    setHasFruitNinjaTriggered(false);
+    setExamToast(null);
   };
 
   // Reset exam on open
@@ -110,12 +123,16 @@ export default function QuizExamModal({
     if (isOpen) {
       setExamState('intro');
       setSelectedAnswers({});
+      setDisabledOptions({});
       setCurrentResult(null);
       setShowConfirmSubmit(false);
+      setShowFruitNinja(false);
+      setHasFruitNinjaTriggered(false);
+      setExamToast(null);
     }
   }, [isOpen]);
 
-  // Countdown timer in progress
+  // Countdown timer in progress & Minigame trigger check
   useEffect(() => {
     if (examState === 'in_progress') {
       timerRef.current = setInterval(() => {
@@ -125,6 +142,13 @@ export default function QuizExamModal({
             handleAutoSubmit();
             return 0;
           }
+
+          // Trigger Fruit Ninja minigame when timeLeft <= 15 and hasn't triggered yet
+          if (prev <= 15 && !hasFruitNinjaTriggered) {
+            setHasFruitNinjaTriggered(true);
+            setShowFruitNinja(true);
+          }
+
           return prev - 1;
         });
       }, 1000);
@@ -133,7 +157,155 @@ export default function QuizExamModal({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [examState, examQuestions, selectedAnswers]);
+  }, [examState, examQuestions, selectedAnswers, hasFruitNinjaTriggered]);
+
+  // Anti-Cheat: Block Copy / Cut / Paste / Select / Inspect Shortcuts during exam
+  const handlePreventCopy = useCallback((e: React.SyntheticEvent | Event) => {
+    if (examState === 'in_progress') {
+      e.preventDefault();
+      setExamToast({
+        message: '🛡️ Bảo mật Viện Cố Thị: Nghiêm cấm sao chép câu hỏi & đáp án dưới mọi hình thức!',
+        type: 'danger',
+      });
+    }
+  }, [examState]);
+
+  useEffect(() => {
+    if (examState !== 'in_progress' || !isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Ctrl+C, Ctrl+A, Ctrl+U, Ctrl+S, Ctrl+P, F12, Cmd+C, Cmd+A
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+      if (
+        (modKey && ['c', 'C', 'a', 'A', 'u', 'U', 's', 'S', 'p', 'P', 'x', 'X'].includes(e.key)) ||
+        e.key === 'F12'
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        setExamToast({
+          message: '🛡️ Chống gian lận: Phím tắt sao chép & thao tác hệ thống đã bị vô hiệu hóa!',
+          type: 'danger',
+        });
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      setExamToast({
+        message: '🛡️ Menu chuột phải đã bị khóa để bảo mật đề thi!',
+        type: 'danger',
+      });
+    };
+
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) {
+        selection.removeAllRanges();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('contextmenu', handleContextMenu, true);
+    document.addEventListener('selectionchange', handleSelectionChange);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('contextmenu', handleContextMenu, true);
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, [examState, isOpen]);
+
+  // Toast Auto-hide
+  useEffect(() => {
+    if (examToast) {
+      const t = setTimeout(() => setExamToast(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [examToast]);
+
+  // Fruit Ninja Handlers
+  const handleFruitAddTime = (seconds: number) => {
+    setTimeLeft((prev) => Math.max(1, prev + seconds));
+    if (seconds > 0) {
+      setExamToast({
+        message: `🍑 Tuyệt đỉnh! Chém trúng đào: +${seconds} giây vào thời gian làm bài!`,
+        type: 'success',
+      });
+    } else {
+      setExamToast({
+        message: `🍆 Ôi không! Chém trúng cà tím: Bị trừ ${Math.abs(seconds)} giây!`,
+        type: 'danger',
+      });
+    }
+  };
+
+  const handleFruitAvocadoEffect = () => {
+    // Find unanswered questions
+    const unansweredIndices = examQuestions
+      .map((_, idx) => idx)
+      .filter((idx) => selectedAnswers[idx] === undefined);
+
+    // Check if there are spare unused questions in the pool
+    const currentExamIds = new Set(examQuestions.map((q) => q.id));
+    const spareQuestions = questions.filter((q) => !currentExamIds.has(q.id));
+
+    if (unansweredIndices.length > 0 && spareQuestions.length > 0) {
+      // Pick random spare question
+      const randomSpare = spareQuestions[Math.floor(Math.random() * spareQuestions.length)];
+      const targetIdx = unansweredIndices[0];
+
+      // Prepare shuffled version for replacement
+      const originalOptionsWithIndex = randomSpare.options.map((opt, idx) => ({
+        text: opt,
+        originalIndex: idx,
+      }));
+      const shuffledOptions = [...originalOptionsWithIndex].sort(() => 0.5 - Math.random());
+      const shuffledCorrectIndex = shuffledOptions.findIndex(
+        (o) => o.originalIndex === randomSpare.correctAnswer
+      );
+
+      const replacementItem: ShuffledQuizItem = {
+        id: randomSpare.id,
+        question: randomSpare.question,
+        options: shuffledOptions.map((o) => o.text),
+        originalCorrectAnswerIndex: randomSpare.correctAnswer,
+        shuffledCorrectIndex: shuffledCorrectIndex >= 0 ? shuffledCorrectIndex : 0,
+        category: randomSpare.category,
+      };
+
+      setExamQuestions((prev) => {
+        const next = [...prev];
+        next[targetIdx] = replacementItem;
+        return next;
+      });
+
+      setExamToast({
+        message: `🥑 Trái bơ thần kỳ: Đã đổi mới nội dung Câu ${targetIdx + 1} từ kho đề!`,
+        type: 'info',
+      });
+    } else {
+      // 50/50 Helper: Eliminate 2 wrong choices on the first unanswered question
+      const targetIdx = unansweredIndices.length > 0 ? unansweredIndices[0] : 0;
+      const targetQ = examQuestions[targetIdx];
+      if (targetQ) {
+        const correctIdx = targetQ.shuffledCorrectIndex;
+        const wrongIndices = [0, 1, 2, 3].filter((idx) => idx !== correctIdx);
+        const toEliminate = [...wrongIndices].sort(() => 0.5 - Math.random()).slice(0, 2);
+
+        setDisabledOptions((prev) => ({
+          ...prev,
+          [targetIdx]: Array.from(new Set([...(prev[targetIdx] || []), ...toEliminate])),
+        }));
+
+        setExamToast({
+          message: `🥑 Trái bơ 50/50: Đã gạch bỏ 2 đáp án sai ở Câu ${targetIdx + 1}!`,
+          type: 'info',
+        });
+      }
+    }
+  };
 
   // Handle Answer Selection
   const handleSelectOption = (questionIndex: number, optionIndex: number) => {
@@ -274,10 +446,15 @@ export default function QuizExamModal({
               </div>
             </div>
 
-            {/* Notice about hidden answers */}
-            <div className="flex items-center gap-2 text-xs text-purple-300/80 bg-purple-900/20 px-4 py-2 rounded-xl border border-purple-500/20">
-              <HelpCircle className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>Hệ thống chỉ thông báo điểm tổng kết sau khi nộp, tuyệt đối không tiết lộ đáp án đúng/sai.</span>
+            {/* Notice about hidden answers & Anti-Cheat */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 text-xs text-purple-300/90 bg-purple-900/30 px-4 py-2.5 rounded-2xl border border-purple-500/30 w-full max-w-2xl text-left">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-pink-400 shrink-0" />
+                <span className="font-bold text-pink-300">Chống gian lận:</span>
+              </div>
+              <span className="text-[11px] leading-relaxed">
+                Đề thi được bảo vệ chống sao chép/tìm kiếm đáp án. Hệ thống chỉ thông báo điểm tổng kết, không tiết lộ đáp án.
+              </span>
             </div>
 
             {/* Action Buttons */}
@@ -406,8 +583,20 @@ export default function QuizExamModal({
               )}
             </AnimatePresence>
 
-            {/* Scrollable Questions List */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scrollbar-thin scrollbar-thumb-purple-500/30">
+            {/* Scrollable Questions List (Protected with Anti-Cheat & Copy-Prevention) */}
+            <div 
+              onCopy={handlePreventCopy}
+              onCut={handlePreventCopy}
+              onDragStart={handlePreventCopy}
+              onContextMenu={handlePreventCopy}
+              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scrollbar-thin scrollbar-thumb-purple-500/30 select-none cursor-default"
+              style={{
+                WebkitUserSelect: 'none',
+                MozUserSelect: 'none',
+                msUserSelect: 'none',
+                userSelect: 'none',
+              }}
+            >
               {examQuestions.map((item, qIdx) => {
                 const selectedOption = selectedAnswers[qIdx];
                 return (
@@ -445,27 +634,41 @@ export default function QuizExamModal({
                       {item.options.map((optText, optIdx) => {
                         const letter = ['A', 'B', 'C', 'D'][optIdx];
                         const isSelected = selectedOption === optIdx;
+                        const isOptionDisabled = disabledOptions[qIdx]?.includes(optIdx);
+
                         return (
                           <button
                             key={optIdx}
                             type="button"
-                            onClick={() => handleSelectOption(qIdx, optIdx)}
-                            className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-start gap-3 text-xs leading-relaxed ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-purple-600/50 to-pink-600/40 border-purple-400 text-white font-bold shadow-lg shadow-purple-500/15 scale-[1.01]'
-                                : 'bg-[#0E0317]/80 border-purple-500/20 text-slate-200 hover:border-purple-400/50 hover:bg-purple-950/30 hover:text-white'
+                            disabled={isOptionDisabled}
+                            onClick={() => !isOptionDisabled && handleSelectOption(qIdx, optIdx)}
+                            className={`p-3.5 rounded-2xl border text-left transition-all duration-200 flex items-start gap-3 text-xs leading-relaxed ${
+                              isOptionDisabled
+                                ? 'bg-black/40 border-slate-700/40 text-slate-500 line-through opacity-40 cursor-not-allowed border-dashed'
+                                : isSelected
+                                ? 'bg-gradient-to-r from-purple-600/50 to-pink-600/40 border-purple-400 text-white font-bold shadow-lg shadow-purple-500/15 scale-[1.01] cursor-pointer'
+                                : 'bg-[#0E0317]/80 border-purple-500/20 text-slate-200 hover:border-purple-400/50 hover:bg-purple-950/30 hover:text-white cursor-pointer'
                             }`}
                           >
                             <span 
                               className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-mono font-extrabold shrink-0 ${
-                                isSelected
+                                isOptionDisabled
+                                  ? 'bg-slate-800 text-slate-500 line-through'
+                                  : isSelected
                                   ? 'bg-purple-500 text-white shadow-sm'
                                   : 'bg-purple-950/60 border border-purple-500/30 text-purple-300'
                               }`}
                             >
                               {letter}
                             </span>
-                            <span className="pt-0.5 select-none">{optText}</span>
+                            <span className="pt-0.5 select-none flex-1">
+                              {optText}
+                              {isOptionDisabled && (
+                                <span className="ml-2 text-[10px] text-pink-400/80 font-mono no-underline inline-block">
+                                  [✕ Gạch bỏ 50/50]
+                                </span>
+                              )}
+                            </span>
                           </button>
                         );
                       })}
@@ -490,6 +693,38 @@ export default function QuizExamModal({
                 </p>
               </div>
             </div>
+
+            {/* In-Exam Notification Toast */}
+            <AnimatePresence>
+              {examToast && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  className={`fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl border text-xs sm:text-sm font-extrabold font-comfortaa shadow-2xl backdrop-blur-xl flex items-center gap-2.5 ${
+                    examToast.type === 'success'
+                      ? 'bg-pink-950/90 border-pink-400 text-pink-200 shadow-pink-500/30'
+                      : examToast.type === 'danger'
+                      ? 'bg-rose-950/90 border-rose-500 text-rose-200 shadow-rose-500/30'
+                      : 'bg-emerald-950/90 border-emerald-400 text-emerald-200 shadow-emerald-500/30'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-spin shrink-0" />
+                  <span>{examToast.message}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Fruit Ninja Slicing Minigame Overlay (Triggered when timeLeft <= 15s) */}
+            <AnimatePresence>
+              {showFruitNinja && (
+                <FruitNinjaOverlay
+                  onAddTime={handleFruitAddTime}
+                  onAvocadoEffect={handleFruitAvocadoEffect}
+                  onFinish={() => setShowFruitNinja(false)}
+                />
+              )}
+            </AnimatePresence>
 
             {/* Confirm Submit Dialog Overlay */}
             <AnimatePresence>
