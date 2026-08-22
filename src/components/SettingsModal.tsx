@@ -14,13 +14,18 @@ import {
   ShieldCheck,
   Database,
   FileDown,
+  Lock,
+  Unlock,
+  DoorClosed,
+  AlertTriangle,
 } from "lucide-react";
-import { Genre, Settings, Prompt, RegRecord } from "../types";
+import { Genre, Settings, Prompt, RegRecord, QuizQuestion } from "../types";
 import { 
   checkStoragePersisted, 
   requestPersistentStorage,
   getFromIndexedDB
 } from "../lib/indexedDbBackup";
+import QuizManagerTab from "./QuizManagerTab";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -52,9 +57,14 @@ interface SettingsModalProps {
     votes?: Record<string, number>;
   }) => Promise<void>;
   isOfflineMode?: boolean;
+
+  // Quiz Mode Props
+  questions?: QuizQuestion[];
+  onUpdateQuestions?: (newQuestions: QuizQuestion[]) => void;
+  onTestExam?: () => void;
 }
 
-type TabType = "categories" | "backgrounds" | "music" | "links" | "backup" | "account";
+type TabType = "categories" | "quiz" | "backgrounds" | "music" | "links" | "backup" | "account";
 
 export default function SettingsModal({
   isOpen,
@@ -75,6 +85,11 @@ export default function SettingsModal({
   votesData = {},
   onImportBackup,
   isOfflineMode = false,
+
+  // Quiz Props
+  questions = [],
+  onUpdateQuestions,
+  onTestExam,
 }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("categories");
 
@@ -95,6 +110,9 @@ export default function SettingsModal({
   // Backup & Permanent Storage State Parameters
   const [isPersisted, setIsPersisted] = useState(false);
   const [dbStats, setDbStats] = useState({ genres: 0, prompts: 0, records: 0 });
+
+  // Lockdown confirmation state
+  const [showLockConfirmModal, setShowLockConfirmModal] = useState(false);
 
   // Query database persistence and counts upon modal display
   useEffect(() => {
@@ -290,6 +308,12 @@ export default function SettingsModal({
             🗂️ Khoa Điều Trị
           </button>
           <button
+            onClick={() => setActiveTab("quiz")}
+            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "quiz" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+          >
+            🧠 Chế Độ Giải Đề
+          </button>
+          <button
             onClick={() => setActiveTab("backgrounds")}
             className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "backgrounds" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
           >
@@ -439,6 +463,23 @@ export default function SettingsModal({
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: QUIZ EXAM MODE */}
+          {activeTab === "quiz" && (
+            <div className="space-y-4 animate-[in_0.15s_ease-out]">
+              <QuizManagerTab
+                settings={settings}
+                onUpdateSettings={(newPartial) => {
+                  Object.entries(newPartial).forEach(([k, v]) => {
+                    onSaveSettings(k as keyof Settings, v);
+                  });
+                }}
+                questions={questions}
+                onUpdateQuestions={onUpdateQuestions || (() => {})}
+                onTestExam={onTestExam || (() => {})}
+              />
             </div>
           )}
 
@@ -896,6 +937,7 @@ export default function SettingsModal({
           {/* TAB 5: ACCOUNT */}
           {activeTab === "account" && (
             <div className="space-y-4 animate-[in_0.15s_ease-out]">
+              {/* Part 1: Admin Profile Card */}
               <div className="p-5 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-900 text-[var(--zone-primary)] flex items-center justify-center mx-auto shadow-inner border border-slate-200/50 dark:border-slate-750">
                   <User className="w-8 h-8" />
@@ -931,6 +973,119 @@ export default function SettingsModal({
                   </button>
                 </div>
               </div>
+
+              {/* Part 2: Site Lockdown / "Đóng Cửa" Section */}
+              <div className="p-5 border-2 border-rose-500/30 rounded-2xl bg-gradient-to-b from-rose-950/20 via-slate-900/40 to-slate-900/60 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${settings.isSiteClosed ? 'bg-rose-500/20 text-rose-450 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'}`}>
+                      {settings.isSiteClosed ? <DoorClosed className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                        Công Tắc "Đóng Cửa" (Khóa Toàn Viện)
+                        {settings.isSiteClosed ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
+                            🔴 Đang Đóng Cửa
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            🟢 Đang Mở Cửa
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        {settings.isSiteClosed
+                          ? "Toàn bộ người dùng đang bị khóa ngoài với thông báo đào tạo lại."
+                          : "Người dùng và bệnh nhân có thể tự do truy cập bình thường."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-black/40 rounded-xl border border-rose-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                  <p className="font-semibold text-rose-300 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                    Cơ chế hoạt động khi kích hoạt "Đóng Cửa":
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-400 pl-1">
+                    <li>Toàn bộ người dùng trên web lập tức bị thoát ra màn hình khóa với hiệu ứng cánh lông vũ rơi.</li>
+                    <li>Hiển thị thông báo: <em>"Bảo bối à, đã đến giờ Viện trưởng dẫn các bác sĩ đi đào tạo lại. Bé yêu quay lại sau nhé~"</em></li>
+                    <li>Trạng thái lưu trữ đồng bộ (LocalStorage & Đám mây Firestore), không bị mất khi F5 tải lại trang.</li>
+                    <li>Chỉ có Admin đăng nhập mới vào được hệ thống để mở cửa trở lại.</li>
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  id="btn-toggle-site-lockdown"
+                  onClick={() => setShowLockConfirmModal(true)}
+                  className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-lg hover:scale-[1.01] active:scale-[0.99] ${
+                    settings.isSiteClosed
+                      ? "bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-emerald-100 border border-emerald-400/40"
+                      : "bg-gradient-to-r from-rose-700 to-pink-800 hover:from-rose-600 hover:to-pink-700 text-rose-100 border border-rose-400/40"
+                  }`}
+                >
+                  {settings.isSiteClosed ? (
+                    <>
+                      <Unlock className="w-4 h-4" /> Mở Cửa Trở Lại (Mở Khóa Toàn Web)
+                    </>
+                  ) : (
+                    <>
+                      <DoorClosed className="w-4 h-4" /> Đóng Cửa Viện (Khóa Toàn Bộ Web)
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Safety Confirmation Modal for Lockdown */}
+              {showLockConfirmModal && (
+                <div className="fixed inset-0 z-[100002] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
+                  <div className="bg-slate-900 border-2 border-rose-500/40 rounded-3xl p-6 max-w-[400px] w-full text-center shadow-2xl space-y-4 animate-[scale-in_0.2s_ease-out]">
+                    <div className="w-14 h-14 rounded-full bg-rose-950/60 border border-rose-500/30 flex items-center justify-center mx-auto text-2xl">
+                      {settings.isSiteClosed ? "✨" : "🚪"}
+                    </div>
+                    
+                    <h3 className="font-cabinet text-base font-bold text-slate-100">
+                      {settings.isSiteClosed
+                        ? "Xác nhận Mở Cửa lại Viện?"
+                        : "Xác nhận Đóng Cửa toàn bộ Viện?"}
+                    </h3>
+                    
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      {settings.isSiteClosed
+                        ? "Bé có chắc chắn muốn mở cửa trở lại? Toàn bộ bệnh nhân và người dùng sẽ có thể truy cập lại trang chính bình thường."
+                        : "Sau khi bấm xác nhận, toàn bộ người dùng đang dùng web sẽ bị khóa lại với thông báo đào tạo và hiệu ứng lông vũ rơi. Bé có chắc chắn không vô tình bấm nhầm?"}
+                    </p>
+
+                    <div className="flex gap-2.5 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowLockConfirmModal(false)}
+                        className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer border border-slate-700"
+                      >
+                        Hủy bỏ
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-confirm-site-lockdown"
+                        onClick={() => {
+                          const nextStatus = !settings.isSiteClosed;
+                          onSaveSettings("isSiteClosed", nextStatus);
+                          setShowLockConfirmModal(false);
+                        }}
+                        className={`flex-1 py-2.5 font-bold rounded-xl text-xs transition cursor-pointer shadow-md ${
+                          settings.isSiteClosed
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                            : "bg-rose-600 hover:bg-rose-500 text-white"
+                        }`}
+                      >
+                        {settings.isSiteClosed ? "🔓 Xác Nhận Mở" : "🚪 Xác Nhận Đóng"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

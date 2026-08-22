@@ -18,6 +18,8 @@ import {
   Bell,
   Award,
   Megaphone,
+  BrainCircuit,
+  Clock,
 } from "lucide-react";
 
 // Firebase Firestore imports
@@ -36,6 +38,8 @@ import {
 // Subcomponents helper importations
 import WelcomeScreen from "./components/WelcomeScreen";
 import AIExamModal from "./components/AIExamModal";
+import QuizExamModal from "./components/QuizExamModal";
+import QuizLockoutScreen from "./components/QuizLockoutScreen";
 import PromptCard from "./components/PromptCard";
 import PromptModal from "./components/PromptModal";
 import SettingsModal from "./components/SettingsModal";
@@ -51,6 +55,7 @@ import UserAccountModal from "./components/UserAccountModal";
 import { StyledUsername, UserAvatar } from "./components/UserProfileStyle";
 import ScrollToTopButton from "./components/ScrollToTopButton";
 import ClickEffectManager from "./components/ClickEffectManager";
+import SiteLockdownScreen from "./components/SiteLockdownScreen";
 
 const siteHeaderBannerImg = "https://i.postimg.cc/xd0cPtcG/b0e2fa25b7a5b594c8086d9faa59e346.jpg";
 
@@ -63,7 +68,7 @@ import {
   defaultRegRecords,
 } from "./defaultData";
 
-import { Genre, Prompt, RegRecord, Settings } from "./types";
+import { Genre, Prompt, RegRecord, Settings, QuizQuestion } from "./types";
 import {
   retrieveFullBackupState,
   syncAllCothiData,
@@ -241,6 +246,14 @@ export default function App() {
 
   // --- Theme Wallpapers, links & audio states ---
   const [settings, setSettings] = useState<Settings>(() => {
+    let savedSettings: Partial<Settings> = {};
+    try {
+      const savedStr = localStorage.getItem("local_settings");
+      if (savedStr) {
+        savedSettings = JSON.parse(savedStr);
+      }
+    } catch {}
+
     const localMusicName = localStorage.getItem("user_musicName");
     const localMusicData = localStorage.getItem("user_musicData");
     const localMusicUrl = localStorage.getItem("user_musicUrl");
@@ -257,6 +270,7 @@ export default function App() {
       musicName: localMusicName !== null ? localMusicName : "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
       musicData: localMusicData !== null ? localMusicData : "",
       musicUrl: localMusicUrl !== null ? localMusicUrl : "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF",
+      ...savedSettings,
     };
   });
 
@@ -272,6 +286,54 @@ export default function App() {
   const [showPromptModal, setShowPromptModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // --- Quiz & Lockout System State ---
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>(() => {
+    try {
+      const saved = localStorage.getItem("cothi_quiz_questions");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [isTestExamMode, setIsTestExamMode] = useState(false);
+  const [pendingEntranceZone, setPendingEntranceZone] = useState<"hospital" | "cai-nghien" | null>(null);
+
+  const [quizLockoutUntil, setQuizLockoutUntil] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("cothi_quiz_lockout_until");
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const [quizUnlockUntil, setQuizUnlockUntil] = useState<number>(() => {
+    try {
+      const session = sessionStorage.getItem("cothi_quiz_unlock_until");
+      if (session) return parseInt(session, 10);
+      const local = localStorage.getItem("cothi_quiz_unlock_until");
+      return local ? parseInt(local, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const [quizUnlockType, setQuizUnlockType] = useState<"partial_7" | "full" | null>(() => {
+    return (sessionStorage.getItem("cothi_quiz_unlock_type") || localStorage.getItem("cothi_quiz_unlock_type") || null) as any;
+  });
+
+  const [, setTimeTicker] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeTicker((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // --- Deletion Confirmation Dialog ---
   const [customConfirm, setCustomConfirm] = useState<{
@@ -373,6 +435,12 @@ export default function App() {
       if (backup.votes && Object.keys(backup.votes).length > 0) {
         setVotesData((prev) => ({ ...prev, ...backup.votes }));
         localStorage.setItem("char_votes", JSON.stringify(backup.votes));
+      }
+
+      // Load Quiz Questions
+      if (backup.questions && backup.questions.length > 0) {
+        setQuizQuestions(backup.questions);
+        localStorage.setItem("cothi_quiz_questions", JSON.stringify(backup.questions));
       }
     } catch (e) {
       console.error("Lỗi khôi phục dữ liệu ngoại tuyến nâng cao: ", e);
@@ -1048,12 +1116,31 @@ export default function App() {
       },
     );
 
+    // f. Quiz bank questions synchronization
+    const unsubQuiz = onSnapshot(
+      doc(db, "quiz_bank", "global_questions"),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data && Array.isArray(data.questions) && data.questions.length > 0) {
+            setQuizQuestions(data.questions);
+            localStorage.setItem("cothi_quiz_questions", JSON.stringify(data.questions));
+            saveToIndexedDB("quiz_questions", data.questions).catch((e) => console.warn(e));
+          }
+        }
+      },
+      (err) => {
+        console.warn("Lỗi đăng ký theo dõi Quiz questions từ Firestore: ", err);
+      }
+    );
+
     return () => {
       unsubSettings();
       unsubGenres();
       unsubPrompts();
       unsubRecords();
       unsubVotes();
+      unsubQuiz();
     };
   }, []);
 
@@ -1305,8 +1392,148 @@ export default function App() {
   // Portal Entrance Triggers
   const handlePortalEntrance = (zone: "hospital" | "cai-nghien") => {
     setCurrentZone(zone);
-    // Display Medical Questionnaire Modal
-    setShowRegModal(true);
+
+    // Helper to start continuous audio playback
+    const triggerAudioPlayback = () => {
+      const isYT =
+        settings.musicUrl &&
+        (settings.musicUrl.includes("youtube.com") ||
+          settings.musicUrl.includes("youtu.be"));
+      if (audioRef.current && !isYT) {
+        audioRef.current.play().catch(() => {});
+      }
+    };
+
+    // 1. If Admin: straight to main console
+    if (isAdmin) {
+      setCurrentScreen("app");
+      triggerAudioPlayback();
+      return;
+    }
+
+    // 2. If Quiz mode enabled and user is NOT admin
+    if (settings.quizModeEnabled) {
+      // If question bank is empty (admin hasn't added questions yet), bypass to app directly
+      if (quizQuestions.length === 0) {
+        setCurrentScreen("app");
+        triggerAudioPlayback();
+        return;
+      }
+
+      // Check if locked out
+      if (quizLockoutUntil && Date.now() < quizLockoutUntil) {
+        return;
+      }
+      // Check if already passed and unlock is active
+      if (quizUnlockUntil && Date.now() < quizUnlockUntil) {
+        setCurrentScreen("app");
+        triggerAudioPlayback();
+        return;
+      }
+      // Otherwise trigger Quiz Exam Modal!
+      setPendingEntranceZone(zone);
+      setIsTestExamMode(false);
+      setShowQuizModal(true);
+      return;
+    }
+
+    // 3. Normal user with Quiz mode disabled: straight to main console
+    setCurrentScreen("app");
+    triggerAudioPlayback();
+  };
+
+  const handleQuizCompleted = (result: {
+    score: number;
+    correctCount: number;
+    totalQuestions: number;
+    passedTier: "failed" | "tier1" | "tier2";
+  }) => {
+    // Helper to start continuous audio playback
+    const triggerAudioPlayback = () => {
+      const isYT =
+        settings.musicUrl &&
+        (settings.musicUrl.includes("youtube.com") ||
+          settings.musicUrl.includes("youtu.be"));
+      if (audioRef.current && !isYT) {
+        audioRef.current.play().catch(() => {});
+      }
+    };
+
+    if (result.passedTier === "failed") {
+      if (!isTestExamMode) {
+        const lockoutTime = Date.now() + 30 * 60 * 1000;
+        setQuizLockoutUntil(lockoutTime);
+        localStorage.setItem("cothi_quiz_lockout_until", lockoutTime.toString());
+        setQuizUnlockUntil(0);
+        setQuizUnlockType(null);
+        sessionStorage.removeItem("cothi_quiz_unlock_until");
+        sessionStorage.removeItem("cothi_quiz_unlock_type");
+        localStorage.removeItem("cothi_quiz_unlock_until");
+        localStorage.removeItem("cothi_quiz_unlock_type");
+      }
+      setShowQuizModal(false);
+      setToastMessage("⏱️ Bé đã bị khóa truy cập 30 phút do chưa đạt 7.0 điểm.");
+    } else if (result.passedTier === "tier1") {
+      const unlockTime = Date.now() + 60 * 60 * 1000;
+      setQuizUnlockUntil(unlockTime);
+      setQuizUnlockType("partial_7");
+      setQuizLockoutUntil(0);
+      localStorage.removeItem("cothi_quiz_lockout_until");
+      sessionStorage.setItem("cothi_quiz_unlock_until", unlockTime.toString());
+      sessionStorage.setItem("cothi_quiz_unlock_type", "partial_7");
+      localStorage.setItem("cothi_quiz_unlock_until", unlockTime.toString());
+      localStorage.setItem("cothi_quiz_unlock_type", "partial_7");
+      setShowQuizModal(false);
+      setToastMessage("🎉 Chúc mừng bảo bối đã mở khóa 7 bệnh án cổ xưa trong 1 tiếng!");
+      if (!isTestExamMode) {
+        if (pendingEntranceZone) {
+          setCurrentZone(pendingEntranceZone);
+        }
+        setCurrentScreen("app");
+        triggerAudioPlayback();
+      }
+    } else if (result.passedTier === "tier2") {
+      const unlockTime = Date.now() + 60 * 60 * 1000;
+      setQuizUnlockUntil(unlockTime);
+      setQuizUnlockType("full");
+      setQuizLockoutUntil(0);
+      localStorage.removeItem("cothi_quiz_lockout_until");
+      sessionStorage.setItem("cothi_quiz_unlock_until", unlockTime.toString());
+      sessionStorage.setItem("cothi_quiz_unlock_type", "full");
+      localStorage.setItem("cothi_quiz_unlock_until", unlockTime.toString());
+      localStorage.setItem("cothi_quiz_unlock_type", "full");
+      window.dispatchEvent(new CustomEvent("celebrate-confetti"));
+      setShowQuizModal(false);
+      setToastMessage("👑 Đỉnh cao tuyệt đối! Đã mở khóa toàn bộ bệnh án trong 1 tiếng!");
+      if (!isTestExamMode) {
+        if (pendingEntranceZone) {
+          setCurrentZone(pendingEntranceZone);
+        }
+        setCurrentScreen("app");
+        triggerAudioPlayback();
+      }
+    }
+  };
+
+  const handleUpdateQuizQuestions = async (newQuestions: QuizQuestion[]) => {
+    setQuizQuestions(newQuestions);
+    try {
+      localStorage.setItem("cothi_quiz_questions", JSON.stringify(newQuestions));
+      await saveToIndexedDB("quiz_questions", newQuestions);
+    } catch (e) {
+      console.warn("Lỗi lưu câu hỏi:", e);
+    }
+    if (!isOfflineMode) {
+      try {
+        await setDoc(doc(db, "quiz_bank", "global_questions"), {
+          questions: newQuestions,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn("Lỗi lưu câu hỏi lên Firestore:", err);
+      }
+    }
+    setToastMessage(`💾 Đã lưu ngân hàng ${newQuestions.length} câu hỏi!`);
   };
 
   const handleRegModalExit = () => {
@@ -1438,18 +1665,23 @@ export default function App() {
       saveToIndexedDB(`user_${key}`, value).catch((e) => console.warn(e));
     }
 
+    setSettings((prev) => {
+      const updated = { ...prev, [key]: value };
+      localStorage.setItem("local_settings", JSON.stringify(updated));
+      return updated;
+    });
+
+    if (key === "isSiteClosed") {
+      setToastMessage(value ? "🚪 Đã kích hoạt Đóng Cửa Viện (Khóa Web)!" : "✨ Đã mở cửa trở lại Viện Tâm Thần!");
+    }
+
     if (isOfflineMode) {
-      setSettings((prev) => {
-        const updated = { ...prev, [key]: value };
-        localStorage.setItem("local_settings", JSON.stringify(updated));
-        return updated;
-      });
-      setToastMessage("💾 Đã lưu cấu hình thiết lập ngoại tuyến!");
+      if (key !== "isSiteClosed") {
+        setToastMessage("💾 Đã lưu cấu hình thiết lập ngoại tuyến!");
+      }
       return;
     }
     try {
-      setSettings((prev) => ({ ...prev, [key]: value }));
-
       // If it is raw music data and it is excessively large, skip uploading huge stream bytes to global Firestore
       if (key === "musicData" && typeof value === 'string' && value.length > 50000) {
         setToastMessage("💾 Đã lưu tập tin âm nhạc thành công vào trình duyệt của bạn!");
@@ -1851,6 +2083,23 @@ export default function App() {
     return Array.from(tagsSet).slice(0, 10);
   })();
 
+  // Quiz Unlock calculations
+  const allExistingPrompts = [...promptsHospital, ...promptsCaiNghien];
+  const sortedOldestPrompts = [...allExistingPrompts].sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.id).getTime();
+    const timeB = new Date(b.createdAt || b.id).getTime();
+    return timeA - timeB;
+  });
+  const oldest7PromptIds = new Set(sortedOldestPrompts.slice(0, 7).map((p) => p.id.toString()));
+
+  const isQuizUnlockActive = !isAdmin && !!settings.quizModeEnabled && quizUnlockUntil > Date.now();
+  const isPromptUnlockedByQuiz = (promptId: string | number) => {
+    if (!isQuizUnlockActive) return false;
+    if (quizUnlockType === "full") return true;
+    if (quizUnlockType === "partial_7" && oldest7PromptIds.has(promptId.toString())) return true;
+    return false;
+  };
+
   const itemsPerPage = 7;
   const totalPages = Math.ceil(filteredPrompts.length / itemsPerPage) || 1;
   const activePage = Math.min(currentPage, totalPages);
@@ -1882,47 +2131,53 @@ export default function App() {
           </button>
         </div>
       )}
-      <AnimatePresence mode="wait">
-        {/* Welcome Screen overlay */}
-        {currentScreen === "welcome" && (
-          <WelcomeScreen
-            onEnterApp={handlePortalEntrance}
-            isAdmin={isAdmin}
-            currentUser={currentUser}
-            userDisplayName={userDisplayName}
-            userAvatar={userAvatar}
-            userNameColor={userNameColor}
-            userNameStyle={userNameStyle}
-            userNameFont={userNameFont}
-            userAvatarType={userAvatarType}
-            userAvatarImage={userAvatarImage}
-            onLoginClick={() => setShowUserAuthModal(true)}
-            onLogout={() => {
-              if (currentUser === "Admin" || isAdmin) {
-                setShowLogoutConfirm(true);
-              } else {
-                setCustomConfirm({
-                  isOpen: true,
-                  title: "🚪 Đăng xuất?",
-                  description: "Bạn có chắc chắn muốn đăng xuất tài khoản bệnh nhân mộng mơ này không?",
-                  confirmText: "🚪 Đăng xuất",
-                  cancelText: "Hủy bỏ",
-                  icon: "🚪",
-                  onConfirm: () => {
-                    setCurrentUser(null);
-                    localStorage.removeItem("user_logged_username");
-                    setToastMessage("👋 Đã đăng xuất tài khoản bệnh nhân.");
-                    setViewingVipZone(false);
-                    setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
-                  }
-                });
-              }
-            }}
-            discordLink={settings.discordLink}
-            facebookLink={settings.facebookLink}
-            welcomeBgImage={settings.welcomeBgImage}
-          />
-        )}
+      {/* 0. Lockdown Screen (Active when Admin activated "Đóng Cửa" and viewer is not Admin) */}
+      {settings.isSiteClosed && !isAdmin ? (
+        <SiteLockdownScreen
+          onAdminLoginClick={() => setShowLoginModal(true)}
+        />
+      ) : (
+        <AnimatePresence mode="wait">
+          {/* Welcome Screen overlay */}
+          {currentScreen === "welcome" && (
+            <WelcomeScreen
+              onEnterApp={handlePortalEntrance}
+              isAdmin={isAdmin}
+              currentUser={currentUser}
+              userDisplayName={userDisplayName}
+              userAvatar={userAvatar}
+              userNameColor={userNameColor}
+              userNameStyle={userNameStyle}
+              userNameFont={userNameFont}
+              userAvatarType={userAvatarType}
+              userAvatarImage={userAvatarImage}
+              onLoginClick={() => setShowUserAuthModal(true)}
+              onLogout={() => {
+                if (currentUser === "Admin" || isAdmin) {
+                  setShowLogoutConfirm(true);
+                } else {
+                  setCustomConfirm({
+                    isOpen: true,
+                    title: "🚪 Đăng xuất?",
+                    description: "Bạn có chắc chắn muốn đăng xuất tài khoản bệnh nhân mộng mơ này không?",
+                    confirmText: "🚪 Đăng xuất",
+                    cancelText: "Hủy bỏ",
+                    icon: "🚪",
+                    onConfirm: () => {
+                      setCurrentUser(null);
+                      localStorage.removeItem("user_logged_username");
+                      setToastMessage("👋 Đã đăng xuất tài khoản bệnh nhân.");
+                      setViewingVipZone(false);
+                      setCustomConfirm((prev) => ({ ...prev, isOpen: false }));
+                    }
+                  });
+                }
+              }}
+              discordLink={settings.discordLink}
+              facebookLink={settings.facebookLink}
+              welcomeBgImage={settings.welcomeBgImage}
+            />
+          )}
 
         {/* Main Administrative Console dashboard */}
         {currentScreen === "app" && (
@@ -2198,6 +2453,39 @@ export default function App() {
                       className="inline-flex items-center gap-1.5 bg-purple-950/50 border border-purple-500/25 hover:bg-purple-950/80 text-purple-200 font-bold px-3 py-1.5 rounded-2xl text-xs transition cursor-pointer hover:scale-105 active:scale-95"
                     >
                       <LogIn className="w-3.5 h-3.5" /> Đăng nhập / Đăng ký
+                    </button>
+                  )}
+
+                  {/* Quiz Mode Active Unlock Status Pill */}
+                  {isQuizUnlockActive && (
+                    <div
+                      className="inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-950/80 via-indigo-950/80 to-purple-900/80 border border-purple-400/40 text-purple-200 font-bold px-3 py-1.5 rounded-2xl text-xs shadow-lg shadow-purple-950/50 backdrop-blur-md"
+                      title="Thời gian mở khóa bệnh án nhờ giải đề"
+                    >
+                      <BrainCircuit className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+                      <span className="font-milky text-[11px]">
+                        {quizUnlockType === "full" ? "👑 Mở Khóa Toàn Bộ" : "✨ Mở Khóa 7 Bệnh Án"}
+                      </span>
+                      <span className="text-[10px] font-mono font-extrabold bg-black/40 px-2 py-0.5 rounded-lg border border-purple-500/30 text-purple-300 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 inline" />
+                        {Math.floor(Math.max(0, quizUnlockUntil - Date.now()) / 60000)}:
+                        {Math.floor((Math.max(0, quizUnlockUntil - Date.now()) % 60000) / 1000).toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Quiz Exam Trigger button if mode is enabled but user hasn't passed or expired */}
+                  {settings.quizModeEnabled && !isAdmin && !isQuizUnlockActive && (
+                    <button
+                      onClick={() => {
+                        setIsTestExamMode(false);
+                        setShowQuizModal(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-800/90 to-indigo-800/90 hover:from-purple-700 hover:to-indigo-700 text-purple-100 border border-purple-400/40 font-bold px-3 py-1.5 rounded-2xl text-xs transition cursor-pointer shadow-md active:scale-95 hover:scale-105 font-milky"
+                      title="Làm bài kiểm tra trắc nghiệm 30 câu để mở khóa bệnh án!"
+                    >
+                      <BrainCircuit className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+                      <span>🧠 Giải Đề Mở Khóa</span>
                     </button>
                   )}
 
@@ -2617,7 +2905,7 @@ export default function App() {
                             }}
                             onPasswordError={handlePasswordFail}
                             onOpenPrompt={handleOpenPrompt}
-                            isUnlocked={unlockedPromptIds[p.id.toString()] || false}
+                            isUnlocked={isAdmin || (unlockedPromptIds[p.id.toString()] || false) || isPromptUnlockedByQuiz(p.id)}
                             onUnlock={handleUnlockPrompt}
                             onLock={handleLockPrompt}
                             viewMode={viewMode}
@@ -2696,6 +2984,7 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      )}
 
       {/* Embedded hidden audio tag with Callback Ref to force React state synchronization */}
       <audio
@@ -2746,7 +3035,7 @@ export default function App() {
 
       {/* 2. Admin Credentials Lock modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-[20000] p-4 animate-premium-backdrop">
+        <div className="fixed inset-0 flex items-center justify-center z-[100005] p-4 animate-premium-backdrop">
           <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-6 w-full max-w-[380px] shadow-2xl text-emerald-350 animate-premium-modal">
             <div className="flex justify-between items-center mb-4">
               <span className="font-bold text-base font-comfortaa text-emerald-400">
@@ -2843,6 +3132,12 @@ export default function App() {
         votesData={votesData}
         onImportBackup={handleImportBackup}
         isOfflineMode={isOfflineMode}
+        questions={quizQuestions}
+        onUpdateQuestions={handleUpdateQuizQuestions}
+        onTestExam={() => {
+          setIsTestExamMode(true);
+          setShowQuizModal(true);
+        }}
       />
 
       {/* 4. Add/Edit Prompt Modal */}
@@ -2977,6 +3272,30 @@ export default function App() {
         }}
         setToastMessage={setToastMessage}
       />
+
+      {/* Quiz Exam Modal */}
+      <QuizExamModal
+        isOpen={showQuizModal}
+        onClose={() => setShowQuizModal(false)}
+        questions={quizQuestions}
+        isTestMode={isTestExamMode}
+        onQuizCompleted={handleQuizCompleted}
+      />
+
+      {/* Quiz Lockout Screen for failed attempts (< 7 points) */}
+      {!isAdmin && settings.quizModeEnabled && quizLockoutUntil > Date.now() && (
+        <QuizLockoutScreen
+          lockoutUntil={quizLockoutUntil}
+          onRetry={() => {
+            setQuizLockoutUntil(0);
+            localStorage.removeItem("cothi_quiz_lockout_until");
+            setPendingEntranceZone("cai-nghien");
+            setIsTestExamMode(false);
+            setShowQuizModal(true);
+          }}
+          onAdminBypassClick={() => setShowLoginModal(true)}
+        />
+      )}
 
       {/* 6. System Toast alerts */}
       <Toast message={toastMessage} onClose={() => setToastMessage("")} />

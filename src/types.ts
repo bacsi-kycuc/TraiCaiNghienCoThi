@@ -51,6 +51,15 @@ export interface RegRecord {
   date: string;
 }
 
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: [string, string, string, string]; // 4 options A, B, C, D
+  correctAnswer: number; // 0, 1, 2, 3
+  explanation?: string;
+  category?: string;
+}
+
 export interface Settings {
   discordLink: string;
   facebookLink: string;
@@ -63,4 +72,13 @@ export interface Settings {
   musicName: string;
   musicData: string;
   musicUrl: string;
+  
+  // Quiz Mode Settings
+  quizModeEnabled?: boolean;
+  quizTimeLimitMinutes?: number; // In minutes, default 15
+  quizPassingScoreTier1?: number; // default 7.0
+  quizPassingScoreTier2?: number; // default 9.0
+
+  // Site Lockdown / Close Door Setting
+  isSiteClosed?: boolean;
 }

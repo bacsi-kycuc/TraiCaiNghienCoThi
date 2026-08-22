@@ -286,7 +286,7 @@ export default function UserAuthModal({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-[25000] p-4 animate-premium-backdrop">
+    <div className="fixed inset-0 flex items-center justify-center z-[100005] p-4 animate-premium-backdrop">
       <div className="bg-slate-900 border border-purple-500/35 rounded-3xl p-6 w-full max-w-[380px] shadow-2xl text-purple-200 animate-premium-modal">
         <div className="flex justify-between items-center mb-5">
           <span className="font-bold text-base font-comfortaa text-purple-400 flex items-center gap-2">
