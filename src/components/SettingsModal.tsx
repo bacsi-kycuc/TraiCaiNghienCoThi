@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   FolderPlus,
@@ -18,6 +18,8 @@ import {
   Unlock,
   DoorClosed,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Genre, Settings, Prompt, RegRecord, QuizQuestion } from "../types";
 import { 
@@ -143,6 +145,46 @@ export default function SettingsModal({
       alert("✅ Hệ thống trình duyệt đã kích hoạt chế độ Sao lưu Bền vững thành công! Toàn bộ bệnh án sẽ không bao giờ bị dọn dẹp ngẫu nhiên.");
     } else {
       alert("⚠️ Trình duyệt từ chối hoặc không cần cấp quyền bổ sung. Dữ liệu vẫn được lưu trữ bình thường!");
+    }
+  };
+
+  // Tabs navigation ref and scroll helpers for PC/Mobile
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabsScroll = () => {
+    const el = tabsContainerRef.current;
+    if (el) {
+      setCanScrollLeft(el.scrollLeft > 5);
+      setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkTabsScroll();
+    window.addEventListener("resize", checkTabsScroll);
+    return () => window.removeEventListener("resize", checkTabsScroll);
+  }, [isOpen]);
+
+  const handleScrollTabs = (direction: "left" | "right") => {
+    const el = tabsContainerRef.current;
+    if (el) {
+      const scrollAmount = 240;
+      el.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+      setTimeout(checkTabsScroll, 300);
+    }
+  };
+
+  // Enable mouse wheel horizontal scrolling on PC
+  const handleTabsWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const el = tabsContainerRef.current;
+    if (el && e.deltaY !== 0) {
+      el.scrollLeft += e.deltaY;
+      checkTabsScroll();
     }
   };
 
@@ -296,52 +338,81 @@ export default function SettingsModal({
           </button>
         </div>
 
-        {/* Tab Selection */}
-        <div 
-          className="flex gap-1.5 bg-[var(--bg2)] p-1 rounded-xl sm:rounded-2xl my-4 overflow-x-auto overflow-y-hidden scrollbar-hide items-center h-12 shrink-0 border border-white/5 shadow-inner"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-        >
+        {/* Tab Selection Bar with Smooth Navigation Controls & Wheel Scroll for PC/Mobile */}
+        <div className="relative my-3.5 group/tabs flex items-center">
+          {/* Scroll Left Button (PC & Mobile helper) */}
           <button
-            onClick={() => setActiveTab("categories")}
-            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "categories" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            type="button"
+            onClick={() => handleScrollTabs("left")}
+            className={`absolute left-0 z-20 h-9 w-7 bg-gradient-to-r from-[var(--bg2)] via-[var(--bg2)]/95 to-transparent text-[var(--primary)] hover:text-white rounded-l-xl flex items-center justify-start pl-0.5 transition-all duration-200 cursor-pointer ${canScrollLeft ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+            title="Cuộn sang trái"
           >
-            🗂️ Khoa Điều Trị
+            <ChevronLeft className="w-4 h-4 drop-shadow" />
           </button>
-          <button
-            onClick={() => setActiveTab("quiz")}
-            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "quiz" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+
+          {/* Scrollable Tabs List */}
+          <div 
+            ref={tabsContainerRef}
+            onScroll={checkTabsScroll}
+            onWheel={handleTabsWheel}
+            className="w-full flex gap-1.5 bg-[var(--bg2)] p-1.5 rounded-xl sm:rounded-2xl overflow-x-auto overflow-y-hidden items-center h-12 shrink-0 border border-white/10 shadow-inner scroll-smooth cursor-grab active:cursor-grabbing"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "var(--border) transparent",
+            }}
           >
-            🧠 Chế Độ Giải Đề
-          </button>
+            <button
+              onClick={() => setActiveTab("categories")}
+              className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "categories" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            >
+              🗂️ Khoa Điều Trị
+            </button>
+            <button
+              onClick={() => setActiveTab("quiz")}
+              className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "quiz" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            >
+              🧠 Chế Độ Giải Đề
+            </button>
+            <button
+              onClick={() => setActiveTab("backgrounds")}
+              className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "backgrounds" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            >
+              🖼️ Hình Nền
+            </button>
+            <button
+              onClick={() => setActiveTab("music")}
+              className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "music" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            >
+              🎵 Nhạc Nền
+            </button>
+            <button
+              onClick={() => setActiveTab("links")}
+              className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "links" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            >
+              🔗 Liên Kết
+            </button>
+            <button
+              onClick={() => setActiveTab("backup")}
+              className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "backup" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            >
+              📂 Sao Lưu & Khôi Phục
+            </button>
+            <button
+              onClick={() => setActiveTab("account")}
+              className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "account" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            >
+              👤 Tài Khoản
+            </button>
+          </div>
+
+          {/* Scroll Right Button (PC & Mobile helper) */}
           <button
-            onClick={() => setActiveTab("backgrounds")}
-            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "backgrounds" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
+            type="button"
+            onClick={() => handleScrollTabs("right")}
+            className={`absolute right-0 z-20 h-9 w-7 bg-gradient-to-l from-[var(--bg2)] via-[var(--bg2)]/95 to-transparent text-[var(--primary)] hover:text-white rounded-r-xl flex items-center justify-end pr-0.5 transition-all duration-200 cursor-pointer ${canScrollRight ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+            title="Cuộn sang phải"
           >
-            🖼️ Hình Nền
-          </button>
-          <button
-            onClick={() => setActiveTab("music")}
-            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "music" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
-          >
-            🎵 Nhạc Nền
-          </button>
-          <button
-            onClick={() => setActiveTab("links")}
-            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "links" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
-          >
-            🔗 Liên Kết
-          </button>
-          <button
-            onClick={() => setActiveTab("backup")}
-            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "backup" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
-          >
-            📂 Sao Lưu & Khôi Phục
-          </button>
-          <button
-            onClick={() => setActiveTab("account")}
-            className={`whitespace-nowrap shrink-0 flex-1 min-w-max px-4 py-2 text-xs font-bold font-sans rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 ${activeTab === "account" ? "bg-[var(--primary)] text-[var(--bg2)] shadow-md transform scale-[1.02]" : "text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"}`}
-          >
-            👤 Tài Khoản
+            <ChevronRight className="w-4 h-4 drop-shadow" />
           </button>
         </div>
 

@@ -10,8 +10,7 @@ import {
   Send, 
   HelpCircle,
   Sword,
-  XCircle,
-  ShieldAlert
+  XCircle
 } from 'lucide-react';
 import { QuizQuestion } from '../types';
 import FruitNinjaOverlay from './FruitNinjaOverlay';
@@ -401,9 +400,6 @@ export default function QuizExamModal({
 
             {/* Title & Lore Welcome */}
             <div className="space-y-3 max-w-xl">
-              <span className="inline-block px-3.5 py-1 bg-purple-500/15 border border-purple-400/30 text-purple-200 text-xs font-bold rounded-full uppercase tracking-wider font-comfortaa">
-                🧠 THỬ THÁCH TRẠI TÂM THẦN CỐ THỊ
-              </span>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-witchy-dust font-comfortaa leading-snug">
                 Khảo Sát Đầu Vào Bệnh Nhân
               </h2>
@@ -430,31 +426,16 @@ export default function QuizExamModal({
                 <span className="text-lg font-bold text-white font-comfortaa">
                   {questions.length > 0 ? `${Math.min(30, questions.length)} Câu Trắc Nghiệm` : '0 Câu Hỏi'}
                 </span>
-                <span className="text-[10px] text-purple-300/70 block">
-                  {questions.length > 0 ? 'Bốc ngẫu nhiên & xáo trộn' : 'Chưa có câu hỏi trong kho'}
-                </span>
               </div>
               <div className="p-4 rounded-2xl bg-black/40 border border-purple-500/20 space-y-1">
                 <span className="text-[11px] uppercase font-bold text-purple-300 block">Thời Gian Làm Bài</span>
                 <span className="text-lg font-bold text-amber-300 font-comfortaa">{timeLimitMinutes} Phút</span>
-                <span className="text-[10px] text-purple-300/70 block">Đồng hồ đếm ngược tự nộp</span>
               </div>
               <div className="p-4 rounded-2xl bg-black/40 border border-purple-500/20 space-y-1">
                 <span className="text-[11px] uppercase font-bold text-purple-300 block">Quy Chuẩn Mở Khóa</span>
                 <span className="text-xs font-bold text-emerald-300 block">≥ 7.0đ: Mở 7 bệnh án</span>
                 <span className="text-xs font-bold text-pink-300 block">≥ 9.0đ: Mở toàn bộ Viện</span>
               </div>
-            </div>
-
-            {/* Notice about hidden answers & Anti-Cheat */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 text-xs text-purple-300/90 bg-purple-900/30 px-4 py-2.5 rounded-2xl border border-purple-500/30 w-full max-w-2xl text-left">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-pink-400 shrink-0" />
-                <span className="font-bold text-pink-300">Chống gian lận:</span>
-              </div>
-              <span className="text-[11px] leading-relaxed">
-                Đề thi được bảo vệ chống sao chép/tìm kiếm đáp án. Hệ thống chỉ thông báo điểm tổng kết, không tiết lộ đáp án.
-              </span>
             </div>
 
             {/* Action Buttons */}
