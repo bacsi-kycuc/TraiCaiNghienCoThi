@@ -1448,17 +1448,6 @@ export default function App() {
     totalQuestions: number;
     passedTier: "failed" | "tier1" | "tier2";
   }) => {
-    // Helper to start continuous audio playback
-    const triggerAudioPlayback = () => {
-      const isYT =
-        settings.musicUrl &&
-        (settings.musicUrl.includes("youtube.com") ||
-          settings.musicUrl.includes("youtu.be"));
-      if (audioRef.current && !isYT) {
-        audioRef.current.play().catch(() => {});
-      }
-    };
-
     if (result.passedTier === "failed") {
       if (!isTestExamMode) {
         const lockoutTime = Date.now() + 30 * 60 * 1000;
@@ -1471,8 +1460,7 @@ export default function App() {
         localStorage.removeItem("cothi_quiz_unlock_until");
         localStorage.removeItem("cothi_quiz_unlock_type");
       }
-      setShowQuizModal(false);
-      setToastMessage("⏱️ Bé đã bị khóa truy cập 30 phút do chưa đạt 7.0 điểm.");
+      setToastMessage("⏱️ Bé đã bị khóa 30 phút do chưa đạt 7.0 điểm.");
     } else if (result.passedTier === "tier1") {
       const unlockTime = Date.now() + 60 * 60 * 1000;
       setQuizUnlockUntil(unlockTime);
@@ -1483,15 +1471,7 @@ export default function App() {
       sessionStorage.setItem("cothi_quiz_unlock_type", "partial_7");
       localStorage.setItem("cothi_quiz_unlock_until", unlockTime.toString());
       localStorage.setItem("cothi_quiz_unlock_type", "partial_7");
-      setShowQuizModal(false);
-      setToastMessage("🎉 Chúc mừng bảo bối đã mở khóa 7 bệnh án cổ xưa trong 1 tiếng!");
-      if (!isTestExamMode) {
-        if (pendingEntranceZone) {
-          setCurrentZone(pendingEntranceZone);
-        }
-        setCurrentScreen("app");
-        triggerAudioPlayback();
-      }
+      setToastMessage("🎉 Chúc mừng bé! Đã mở sẵn pass cho 7 bệnh án cũ nhất.");
     } else if (result.passedTier === "tier2") {
       const unlockTime = Date.now() + 60 * 60 * 1000;
       setQuizUnlockUntil(unlockTime);
@@ -1503,14 +1483,23 @@ export default function App() {
       localStorage.setItem("cothi_quiz_unlock_until", unlockTime.toString());
       localStorage.setItem("cothi_quiz_unlock_type", "full");
       window.dispatchEvent(new CustomEvent("celebrate-confetti"));
-      setShowQuizModal(false);
-      setToastMessage("👑 Đỉnh cao tuyệt đối! Đã mở khóa toàn bộ bệnh án trong 1 tiếng!");
-      if (!isTestExamMode) {
-        if (pendingEntranceZone) {
-          setCurrentZone(pendingEntranceZone);
-        }
-        setCurrentScreen("app");
-        triggerAudioPlayback();
+      setToastMessage("👑 Xuất sắc! Đã mở khóa toàn bộ bệnh án cho bé!");
+    }
+  };
+
+  const handleCloseQuizModal = () => {
+    setShowQuizModal(false);
+    if (!isTestExamMode && quizUnlockUntil > Date.now()) {
+      if (pendingEntranceZone) {
+        setCurrentZone(pendingEntranceZone);
+      }
+      setCurrentScreen("app");
+      const isYT =
+        settings.musicUrl &&
+        (settings.musicUrl.includes("youtube.com") ||
+          settings.musicUrl.includes("youtu.be"));
+      if (audioRef.current && !isYT) {
+        audioRef.current.play().catch(() => {});
       }
     }
   };
@@ -2084,10 +2073,10 @@ export default function App() {
   })();
 
   // Quiz Unlock calculations
-  const allExistingPrompts = [...promptsHospital, ...promptsCaiNghien];
+  const allExistingPrompts = [...promptsHospital, ...promptsCaiNghien].filter((p) => !p.isGiveaway);
   const sortedOldestPrompts = [...allExistingPrompts].sort((a, b) => {
-    const timeA = new Date(a.createdAt || a.id).getTime();
-    const timeB = new Date(b.createdAt || b.id).getTime();
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : (typeof a.id === "number" && a.id > 1000000 ? a.id : 0);
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : (typeof b.id === "number" && b.id > 1000000 ? b.id : 0);
     return timeA - timeB;
   });
   const oldest7PromptIds = new Set(sortedOldestPrompts.slice(0, 7).map((p) => p.id.toString()));
@@ -2097,6 +2086,13 @@ export default function App() {
     if (!isQuizUnlockActive) return false;
     if (quizUnlockType === "full") return true;
     if (quizUnlockType === "partial_7" && oldest7PromptIds.has(promptId.toString())) return true;
+    return false;
+  };
+
+  const isPromptGreyedOutByQuiz = (promptId: string | number) => {
+    if (isAdmin) return false;
+    if (!isQuizUnlockActive) return false;
+    if (quizUnlockType === "partial_7" && !oldest7PromptIds.has(promptId.toString())) return true;
     return false;
   };
 
@@ -2906,6 +2902,7 @@ export default function App() {
                             onPasswordError={handlePasswordFail}
                             onOpenPrompt={handleOpenPrompt}
                             isUnlocked={isAdmin || (unlockedPromptIds[p.id.toString()] || false) || isPromptUnlockedByQuiz(p.id)}
+                            isGreyedOutByQuiz={isPromptGreyedOutByQuiz(p.id)}
                             onUnlock={handleUnlockPrompt}
                             onLock={handleLockPrompt}
                             viewMode={viewMode}
@@ -3276,7 +3273,7 @@ export default function App() {
       {/* Quiz Exam Modal */}
       <QuizExamModal
         isOpen={showQuizModal}
-        onClose={() => setShowQuizModal(false)}
+        onClose={handleCloseQuizModal}
         questions={quizQuestions}
         isTestMode={isTestExamMode}
         onQuizCompleted={handleQuizCompleted}

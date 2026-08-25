@@ -17,6 +17,7 @@ interface PromptCardProps {
   votes?: number;
   onVote?: (id: string) => void;
   isUnlocked?: boolean;
+  isGreyedOutByQuiz?: boolean;
   onUnlock?: (promptId: string) => void;
   onLock?: (promptId: string) => void;
   currentUser?: string;
@@ -35,6 +36,7 @@ export default function PromptCard({
   votes = 0,
   onVote,
   isUnlocked = false,
+  isGreyedOutByQuiz = false,
   onUnlock,
   onLock,
   currentUser,
@@ -94,6 +96,10 @@ export default function PromptCard({
   };
 
   const handleOpenPrompt = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isGreyedOutByQuiz && !isAdmin) {
+      e.preventDefault();
+      return;
+    }
     if (hasPassword && !isUnlocked && !isAdmin) {
       e.preventDefault();
       setChallengeOpen(true);
@@ -207,7 +213,11 @@ export default function PromptCard({
           delay: Math.min(index * 0.05, 0.5),
         }}
         onClick={handleCardClick}
-        className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-4 shadow-sm hover:border-[var(--zone-primary)] transition-all duration-300 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-default"
+        className={`prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-4 shadow-sm transition-all duration-300 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-default ${
+          isGreyedOutByQuiz && !isAdmin
+            ? "grayscale opacity-40 select-none filter contrast-75 cursor-not-allowed hover:border-[var(--zone-border)]"
+            : "hover:border-[var(--zone-primary)]"
+        }`}
       >
         {/* Premium ripple elements */}
         {ripples.map((ripple) => (
@@ -319,16 +329,26 @@ export default function PromptCard({
             </button>
           )}
 
-          <a
-            href={prompt.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleOpenPrompt}
-            className="font-yahoo inline-flex items-center gap-1 bg-violet-600 hover:bg-violet-500 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            BÉ ĐẾN ĐÂY!
-          </a>
+          {isGreyedOutByQuiz && !isAdmin ? (
+            <div
+              className="font-yahoo inline-flex items-center gap-1.5 bg-slate-800/80 text-slate-400 border border-slate-700/60 px-3 py-1.5 rounded-xl font-bold text-xs cursor-not-allowed whitespace-nowrap"
+              title="Cần đạt ≥ 9.0 điểm bài thi để mở khóa thẻ này"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>CẦN ≥ 9.0 ĐIỂM</span>
+            </div>
+          ) : (
+            <a
+              href={prompt.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleOpenPrompt}
+              className="font-yahoo inline-flex items-center gap-1 bg-violet-600 hover:bg-violet-500 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              BÉ ĐẾN ĐÂY!
+            </a>
+          )}
 
           {onVote && (
             <VoteHeartWidget
@@ -495,7 +515,11 @@ export default function PromptCard({
         delay: Math.min(index * 0.05, 0.5), // Max delay of 0.5s to prevent long waits
       }}
       onClick={handleCardClick}
-      className="prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-5 shadow-lg hover:border-[var(--zone-primary)] transition-all duration-300 relative overflow-hidden flex flex-col justify-between cursor-default"
+      className={`prompt-card bg-[var(--card)] border-2 border-[var(--zone-border)] rounded-2xl p-5 shadow-lg transition-all duration-300 relative overflow-hidden flex flex-col justify-between cursor-default ${
+        isGreyedOutByQuiz && !isAdmin
+          ? "grayscale opacity-40 select-none filter contrast-75 cursor-not-allowed hover:border-[var(--zone-border)]"
+          : "hover:border-[var(--zone-primary)]"
+      }`}
     >
       {/* Premium ripple elements */}
       {ripples.map((ripple) => (
@@ -606,16 +630,26 @@ export default function PromptCard({
             </button>
           )}
 
-          <a
-            href={prompt.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleOpenPrompt}
-            className="font-yahoo inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            BÉ ĐẾN ĐÂY!
-          </a>
+          {isGreyedOutByQuiz && !isAdmin ? (
+            <div
+              className="font-yahoo inline-flex items-center gap-1.5 bg-slate-800/80 text-slate-400 border border-slate-700/60 px-4 py-2 rounded-xl font-bold text-xs cursor-not-allowed whitespace-nowrap"
+              title="Cần đạt ≥ 9.0 điểm bài thi để mở khóa thẻ này"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>CẦN ≥ 9.0 ĐIỂM</span>
+            </div>
+          ) : (
+            <a
+              href={prompt.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleOpenPrompt}
+              className="font-yahoo inline-flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md transition hover:scale-105 border border-violet-500/20 whitespace-nowrap"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              BÉ ĐẾN ĐÂY!
+            </a>
+          )}
 
           {isAdmin && (
             <button

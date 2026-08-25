@@ -54,7 +54,7 @@ export default function QuizLockoutScreen({
         {/* Title */}
         <div className="space-y-2">
           <span className="text-[11px] font-extrabold uppercase tracking-widest text-rose-400 bg-rose-950/40 border border-rose-500/30 px-3 py-1 rounded-full">
-            ⏳ TẠM THỜI KHÓA VIỆN
+            ⏳ TẠM THỜI KHÓA LỐI VÀO
           </span>
           <h2 className="text-xl sm:text-2xl font-bold font-comfortaa text-white">
             Thời Gian Nghỉ Dưỡng
@@ -63,7 +63,7 @@ export default function QuizLockoutScreen({
 
         {/* The Exact User-Specified Phrase */}
         <div className="p-5 rounded-2xl bg-purple-950/50 border border-purple-500/30 text-rose-200 text-sm sm:text-base font-sans italic leading-relaxed shadow-inner">
-          "Chà...bảo bối đã vất vả rồi. Nghỉ ngơi đi và hẹn bé sau 30 phút nữa."
+          “Rất tiếc! Bé quay lại sau 30’ nữa nhé~”
         </div>
 
         {/* Live Countdown Display */}
@@ -77,8 +77,8 @@ export default function QuizLockoutScreen({
           </div>
           <p className="text-[11px] text-purple-300/70">
             {isExpired
-              ? '🎉 Đã hết 30 phút nghỉ ngơi! Bé có thể làm bộ đề mới ngay.'
-              : 'Trang web sẽ tự động mở lại bộ câu hỏi ngẫu nhiên mới khi hết giờ.'}
+              ? '🎉 Đã hết 30 phút nghỉ ngơi! Bé có thể làm bộ đề thi mới được xào lại.'
+              : 'Hệ thống đang đếm ngược thời gian nghỉ ngơi. Việc tải lại trang (reload) sẽ không làm mất thời gian này!'}
           </p>
         </div>
 

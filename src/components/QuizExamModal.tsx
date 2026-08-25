@@ -781,13 +781,13 @@ export default function QuizExamModal({
             {/* Score Summary Display */}
             <div className="space-y-2 max-w-lg">
               <span className="text-[11px] uppercase font-mono font-extrabold tracking-widest text-purple-300">
-                KẾT QUẢ KHẢO SÁT ĐẦU VÀO
+                KẾT QUẢ BÀI KIỂM TRA ĐẦU VÀO
               </span>
               <div className="text-4xl sm:text-5xl font-black text-white font-comfortaa">
                 {currentResult.score} <span className="text-lg sm:text-2xl text-purple-300">/ 10 Điểm</span>
               </div>
               <div className="text-xs sm:text-sm text-purple-200/90 font-mono">
-                Số câu trả lời chuẩn xác: <span className="font-bold text-pink-300">{currentResult.correctCount}</span> / {currentResult.totalQuestions} câu
+                Số câu đúng: <span className="font-bold text-pink-300">{currentResult.correctCount}</span> / {currentResult.totalQuestions} câu
               </div>
             </div>
 
@@ -797,30 +797,38 @@ export default function QuizExamModal({
                 /* >= 9.0 points */
                 <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-950/60 to-purple-950/60 border border-amber-400/40 space-y-2 shadow-inner">
                   <div className="text-amber-300 text-base sm:text-lg font-bold font-comfortaa leading-relaxed">
-                    "Quá ghê gớm! Đỉnh cao! Cổ điển! Sang trọng! Em xứng đáng có được tất cả chúng tôi!"
+                    “Xuất sắc! Đẳng cấp! Đỉnh cao! Cổ điển sang trọng! Bé xứng đáng có được tất cả chúng tôi!”
                   </div>
                   <p className="text-xs text-purple-200/80 font-sans">
-                    ✨ Toàn bộ kho bệnh án của tất cả các anh chồng đã được mở khóa tự do cho bé trong vòng 1 tiếng!
+                    ✨ Toàn bộ tất cả bệnh án hiện đang có ở Trại đã được mở khóa pass sẵn cho bé!
                   </p>
                 </div>
               ) : currentResult.passedTier === 'tier1' ? (
                 /* 7.0 to 8.9 points */
                 <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/60 to-purple-950/60 border border-emerald-400/40 space-y-2 shadow-inner">
                   <div className="text-emerald-300 text-base sm:text-lg font-bold font-comfortaa leading-relaxed">
-                    "Ôi cục dàng của anh giỏi quá! Chúc em lọ vui vẻ với một vài anh chồng thơm tho này nha~"
+                    “Quá giỏi! Chúc bé lọ vui vẻ với một vài anh điều dưỡng đang trực ở Trại nhé~”
                   </div>
                   <p className="text-xs text-purple-200/80 font-sans">
-                    ✨ 7 bệnh án kỳ cựu nhất của Viện đã được mở khóa cho bé trong vòng 1 tiếng!
+                    ✨ 7 bệnh án cũ nhất của Viện đã được mở pass sẵn. Các bệnh án còn lại sẽ ở trạng thái xám!
                   </p>
                 </div>
               ) : (
                 /* < 7.0 points */
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-950/60 to-purple-950/60 border border-rose-500/40 space-y-2 shadow-inner">
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-950/60 to-purple-950/60 border border-rose-500/40 space-y-3 shadow-inner">
                   <div className="text-rose-300 text-base sm:text-lg font-bold font-comfortaa leading-relaxed">
-                    "Chà...bảo bối đã vất vả rồi. Nghỉ ngơi đi và hẹn bé sau 30 phút nữa."
+                    “Rất tiếc! Bé quay lại sau 30’ nữa nhé~”
                   </div>
-                  <p className="text-xs text-purple-200/80 font-sans">
-                    ⏳ Hệ thống sẽ tạm thời đóng cửa nghỉ ngơi trong 30 phút. Hết 30 phút, một bộ đề 30 câu mới sẽ được mở để bé thử sức lại nhé!
+                  <div className="p-3 rounded-2xl bg-black/40 border border-rose-500/20 flex flex-col items-center justify-center gap-1">
+                    <span className="text-[11px] uppercase tracking-wider text-rose-300/80 font-mono">
+                      ⏳ Đang đếm ngược 30 phút nghỉ ngơi (Không thể reload để bỏ qua):
+                    </span>
+                    <span className="text-2xl font-black font-mono text-amber-300 tracking-widest">
+                      30:00
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-purple-200/70 font-sans">
+                    Hết thời gian đếm ngược, một bộ đề 30 câu mới sẽ được random xào lại để bé thử sức tiếp.
                   </p>
                 </div>
               )}
@@ -836,14 +844,14 @@ export default function QuizExamModal({
               <button
                 type="button"
                 onClick={onClose}
-                className={`w-full py-4 px-6 rounded-2xl text-xs sm:text-sm font-extrabold font-comfortaa transition shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer ${
+                className={`w-full py-4 px-6 rounded-2xl text-xs sm:text-sm font-extrabold font-comfortaa transition shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer uppercase tracking-wider ${
                   currentResult.passedTier !== 'failed'
                     ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-emerald-600 text-white shadow-purple-500/20'
                     : 'bg-gradient-to-r from-rose-700 to-purple-900 text-white shadow-rose-900/30'
                 }`}
                 id="quiz-btn-finish"
               >
-                {currentResult.passedTier !== 'failed' ? '🚀 Tiến Vào Viện Ngay' : '🚪 Tuân Lệnh Nghỉ Ngơi (30 Phút)'}
+                {currentResult.passedTier !== 'failed' ? 'VÀO TRẠI' : '🚪 Đóng Lại (Bắt đầu nghỉ ngơi 30 phút)'}
               </button>
             </div>
           </div>
