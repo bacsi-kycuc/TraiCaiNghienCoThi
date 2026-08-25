@@ -452,16 +452,41 @@ export default function QuizExamModal({
                 type="button"
                 disabled={questions.length === 0}
                 onClick={prepareExam}
-                className={`flex-1 py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-extrabold font-comfortaa transition shadow-lg flex items-center justify-center gap-2 ${
+                className={`relative overflow-hidden group flex-1 py-3.5 px-6 rounded-2xl text-xs sm:text-sm font-extrabold font-comfortaa transition-all duration-300 shadow-xl flex items-center justify-center gap-2 ${
                   questions.length === 0
                     ? 'bg-purple-950/40 text-purple-400/50 border border-purple-500/20 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white shadow-purple-500/25 hover:scale-105 active:scale-95 cursor-pointer'
+                    : 'border border-[#F2C4CD]/60 text-white hover:scale-[1.03] active:scale-95 cursor-pointer shadow-[0_8px_30px_rgba(242,196,205,0.35),0_2px_12px_rgba(5,31,69,0.8)] hover:shadow-[0_10px_35px_rgba(242,196,205,0.5),0_0_25px_rgba(13,59,122,0.6)]'
                 }`}
+                style={
+                  questions.length > 0
+                    ? {
+                        background:
+                          'radial-gradient(circle at 15% 25%, #0B3169 0%, #051F45 35%, #5B2C52 65%, #B86588 85%, #F2C4CD 100%)',
+                      }
+                    : {}
+                }
                 id="quiz-btn-ready"
               >
-                <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-                <span>{questions.length === 0 ? 'Kho Chưa Có Đề' : 'Sẵn Sàng Làm Bài'}</span>
-                <ChevronRight className="w-4 h-4" />
+                {/* Fluid Water Ripple Light Effect */}
+                {questions.length > 0 && (
+                  <>
+                    {/* Water shimmer wave layer */}
+                    <div
+                      className="absolute inset-0 opacity-45 pointer-events-none mix-blend-screen transition-opacity duration-500 group-hover:opacity-75"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse 90% 70% at 85% 75%, #F2C4CD 0%, rgba(242, 196, 205, 0.4) 40%, transparent 70%), radial-gradient(ellipse 60% 50% at 20% 30%, rgba(11, 49, 105, 0.8) 0%, transparent 80%)',
+                      }}
+                    />
+                    {/* Organic ripple sheen reflection */}
+                    <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/20 to-transparent rotate-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out pointer-events-none" />
+                  </>
+                )}
+
+                <span className="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] font-comfortaa tracking-wide">
+                  {questions.length === 0 ? 'Kho Chưa Có Đề' : 'Làm Bài'}
+                </span>
+                <ChevronRight className="w-4 h-4 relative z-10 text-[#FEF0F2] drop-shadow group-hover:translate-x-0.5 transition-transform duration-200" />
               </button>
             </div>
           </div>
@@ -668,7 +693,7 @@ export default function QuizExamModal({
                   id="quiz-btn-submit-bottom"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Nộp Bài Thi Trắc Nghiệm ({answeredCount}/{totalExamCount})</span>
+                  <span>Nộp Bài ({answeredCount}/{totalExamCount})</span>
                 </button>
                 <p className="text-[11px] text-purple-300/60 italic text-center">
                   Hãy kiểm tra kỹ các câu hỏi trước khi nộp. Kết quả sẽ được công bố ngay sau khi bấm nộp!
@@ -795,48 +820,34 @@ export default function QuizExamModal({
             <div className="w-full max-w-xl">
               {currentResult.passedTier === 'tier2' ? (
                 /* >= 9.0 points */
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-950/60 to-purple-950/60 border border-amber-400/40 space-y-2 shadow-inner">
+                <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-amber-950/60 to-purple-950/60 border border-amber-400/40 shadow-inner">
                   <div className="text-amber-300 text-base sm:text-lg font-bold font-comfortaa leading-relaxed">
                     “Xuất sắc! Đẳng cấp! Đỉnh cao! Cổ điển sang trọng! Bé xứng đáng có được tất cả chúng tôi!”
                   </div>
-                  <p className="text-xs text-purple-200/80 font-sans">
-                    ✨ Toàn bộ tất cả bệnh án hiện đang có ở Trại đã được mở khóa pass sẵn cho bé!
-                  </p>
                 </div>
               ) : currentResult.passedTier === 'tier1' ? (
                 /* 7.0 to 8.9 points */
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/60 to-purple-950/60 border border-emerald-400/40 space-y-2 shadow-inner">
+                <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-emerald-950/60 to-purple-950/60 border border-emerald-400/40 shadow-inner">
                   <div className="text-emerald-300 text-base sm:text-lg font-bold font-comfortaa leading-relaxed">
                     “Quá giỏi! Chúc bé lọ vui vẻ với một vài anh điều dưỡng đang trực ở Trại nhé~”
                   </div>
-                  <p className="text-xs text-purple-200/80 font-sans">
-                    ✨ 7 bệnh án cũ nhất của Viện đã được mở pass sẵn. Các bệnh án còn lại sẽ ở trạng thái xám!
-                  </p>
                 </div>
               ) : (
                 /* < 7.0 points */
-                <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-950/60 to-purple-950/60 border border-rose-500/40 space-y-3 shadow-inner">
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-950/60 to-purple-950/60 border border-rose-500/40 space-y-4 shadow-inner">
                   <div className="text-rose-300 text-base sm:text-lg font-bold font-comfortaa leading-relaxed">
                     “Rất tiếc! Bé quay lại sau 30’ nữa nhé~”
                   </div>
-                  <div className="p-3 rounded-2xl bg-black/40 border border-rose-500/20 flex flex-col items-center justify-center gap-1">
-                    <span className="text-[11px] uppercase tracking-wider text-rose-300/80 font-mono">
-                      ⏳ Đang đếm ngược 30 phút nghỉ ngơi (Không thể reload để bỏ qua):
-                    </span>
-                    <span className="text-2xl font-black font-mono text-amber-300 tracking-widest">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-[#051F45]/90 via-[#131D38]/90 to-[#F2C4CD]/30 border border-[#F2C4CD]/40 backdrop-blur-md flex flex-col items-center justify-center gap-1 shadow-inner">
+                    <span className="text-3xl sm:text-4xl font-black font-mono text-amber-300 tracking-widest drop-shadow">
                       30:00
                     </span>
                   </div>
-                  <p className="text-[11px] text-purple-200/70 font-sans">
-                    Hết thời gian đếm ngược, một bộ đề 30 câu mới sẽ được random xào lại để bé thử sức tiếp.
+                  <p className="text-xs text-purple-200/85 font-sans">
+                    Hết thời gian đếm ngược thì sẽ được làm bộ đề mới.
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Strict Notice about No Answer Keys */}
-            <div className="text-[11px] text-purple-300/60 italic max-w-md">
-              (Bảo mật Viện Cố Thị: Hệ thống không công bố danh sách đáp án đúng/sai để đảm bảo tính công bằng và chống học vẹt.)
             </div>
 
             {/* Next Action Button */}
@@ -844,14 +855,39 @@ export default function QuizExamModal({
               <button
                 type="button"
                 onClick={onClose}
-                className={`w-full py-4 px-6 rounded-2xl text-xs sm:text-sm font-extrabold font-comfortaa transition shadow-lg hover:scale-[1.02] active:scale-95 cursor-pointer uppercase tracking-wider ${
+                className={`relative overflow-hidden group w-full py-4 px-6 rounded-2xl text-xs sm:text-sm font-extrabold font-comfortaa transition-all duration-300 shadow-xl hover:scale-[1.02] active:scale-95 cursor-pointer uppercase tracking-wider ${
                   currentResult.passedTier !== 'failed'
-                    ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-emerald-600 text-white shadow-purple-500/20'
-                    : 'bg-gradient-to-r from-rose-700 to-purple-900 text-white shadow-rose-900/30'
+                    ? 'text-white border border-[#56E1E8]/60 shadow-[0_8px_30px_rgba(86,225,232,0.35),0_2px_15px_rgba(92,88,237,0.5)] hover:shadow-[0_12px_35px_rgba(86,225,232,0.5),0_0_25px_rgba(92,88,237,0.7)]'
+                    : 'bg-gradient-to-r from-[#BED9F4] via-[#DEEDF9] to-[#FEFDD0] text-[#051F45] border border-[#BED9F4]/60 shadow-[0_4px_25px_rgba(190,217,244,0.35)] hover:brightness-105'
                 }`}
+                style={
+                  currentResult.passedTier !== 'failed'
+                    ? {
+                        background:
+                          'radial-gradient(circle at 15% 25%, #56E1E8 0%, #3FA9F5 35%, #5C58ED 70%, #122D70 100%)',
+                      }
+                    : {}
+                }
                 id="quiz-btn-finish"
               >
-                {currentResult.passedTier !== 'failed' ? 'VÀO TRẠI' : '🚪 Đóng Lại (Bắt đầu nghỉ ngơi 30 phút)'}
+                {currentResult.passedTier !== 'failed' && (
+                  <>
+                    {/* Water shimmer wave layer */}
+                    <div
+                      className="absolute inset-0 opacity-40 pointer-events-none mix-blend-screen transition-opacity duration-500 group-hover:opacity-70"
+                      style={{
+                        background:
+                          'radial-gradient(ellipse 90% 70% at 85% 75%, #56E1E8 0%, rgba(63, 169, 245, 0.5) 40%, transparent 70%), radial-gradient(ellipse 60% 50% at 20% 30%, rgba(92, 88, 237, 0.8) 0%, transparent 80%)',
+                      }}
+                    />
+                    {/* Sheen reflection */}
+                    <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/25 to-transparent rotate-12 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out pointer-events-none" />
+                  </>
+                )}
+
+                <span className="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]">
+                  {currentResult.passedTier !== 'failed' ? 'VÀO TRẠI' : 'ĐÓNG'}
+                </span>
               </button>
             </div>
           </div>

@@ -67,18 +67,18 @@ export default function QuizLockoutScreen({
         </div>
 
         {/* Live Countdown Display */}
-        <div className="p-6 rounded-2xl bg-black/50 border border-purple-500/30 space-y-2">
-          <div className="text-xs text-purple-300 uppercase tracking-wider font-bold flex items-center justify-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
+        <div className="p-6 rounded-2xl bg-gradient-to-r from-[#051F45]/90 via-[#131D38]/90 to-[#F2C4CD]/30 border border-[#F2C4CD]/40 backdrop-blur-md space-y-2.5 shadow-inner">
+          <div className="text-xs text-purple-200/90 uppercase tracking-wider font-bold flex items-center justify-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-[#F2C4CD]" />
             <span>Thời Gian Chờ Mở Khóa Đề Mới:</span>
           </div>
-          <div className="text-4xl sm:text-5xl font-black font-mono text-amber-300 tracking-wider">
+          <div className="text-4xl sm:text-5xl font-black font-mono text-amber-300 tracking-wider drop-shadow">
             {formattedTime}
           </div>
-          <p className="text-[11px] text-purple-300/70">
+          <p className="text-xs text-purple-200/80">
             {isExpired
               ? '🎉 Đã hết 30 phút nghỉ ngơi! Bé có thể làm bộ đề thi mới được xào lại.'
-              : 'Hệ thống đang đếm ngược thời gian nghỉ ngơi. Việc tải lại trang (reload) sẽ không làm mất thời gian này!'}
+              : 'Hết thời gian đếm ngược thì sẽ được làm bộ đề mới.'}
           </p>
         </div>
 

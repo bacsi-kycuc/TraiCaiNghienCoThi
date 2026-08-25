@@ -40,17 +40,36 @@ export default function QuizManagerTab({
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [bulkImportText, setBulkImportText] = useState('');
+  const [bulkImportCategory, setBulkImportCategory] = useState('Tiếng Anh');
   const [importError, setImportError] = useState('');
   const [showToggleConfirm, setShowToggleConfirm] = useState(false);
   const [pendingToggleState, setPendingToggleState] = useState<boolean>(false);
+  const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('cothi_custom_quiz_categories');
+    return saved ? JSON.parse(saved) : ['Tiếng Anh'];
+  });
 
-  // Categories list
+  // Normalize questions category: rename any legacy 'Nhập từ văn bản' to 'Tiếng Anh'
+  const normalizedQuestions = questions.map((q) => {
+    if (!q.category || q.category === 'Nhập từ văn bản') {
+      return { ...q, category: 'Tiếng Anh' };
+    }
+    return q;
+  });
+
+  // All unique categories list
   const categories = Array.from(
-    new Set(questions.map((q) => q.category).filter(Boolean) as string[])
+    new Set([
+      'Tiếng Anh',
+      ...customCategories,
+      ...normalizedQuestions.map((q) => q.category).filter(Boolean) as string[],
+    ])
   );
 
   // Filtered questions
-  const filteredQuestions = questions.filter((q) => {
+  const filteredQuestions = normalizedQuestions.filter((q) => {
     const matchesSearch =
       q.question.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       q.options.some((opt) => opt.toLowerCase().includes(searchKeyword.toLowerCase()));
@@ -87,7 +106,7 @@ export default function QuizManagerTab({
     setFormOptionC('');
     setFormOptionD('');
     setFormCorrectAnswer(0);
-    setFormCategory('Nhập từ văn bản');
+    setFormCategory(selectedCategory !== 'all' ? selectedCategory : 'Tiếng Anh');
     setIsCreatingNew(true);
   };
 
@@ -99,7 +118,7 @@ export default function QuizManagerTab({
     setFormOptionC(q.options[2] || '');
     setFormOptionD(q.options[3] || '');
     setFormCorrectAnswer(q.correctAnswer);
-    setFormCategory(q.category || '');
+    setFormCategory(q.category === 'Nhập từ văn bản' ? 'Tiếng Anh' : (q.category || 'Tiếng Anh'));
     setIsCreatingNew(true);
   };
 
@@ -110,6 +129,7 @@ export default function QuizManagerTab({
       return;
     }
 
+    const cat = formCategory.trim() || (selectedCategory !== 'all' ? selectedCategory : 'Tiếng Anh');
     const questionItem: QuizQuestion = {
       id: editingQuestion ? editingQuestion.id : `q_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       question: cleanQuestionText(formQuestion.trim()),
@@ -120,18 +140,52 @@ export default function QuizManagerTab({
         cleanOptionText(formOptionD.trim()),
       ],
       correctAnswer: formCorrectAnswer,
-      category: formCategory.trim() || 'Chung',
+      category: cat,
     };
 
     if (editingQuestion) {
-      const updated = questions.map((q) => (q.id === editingQuestion.id ? questionItem : q));
+      const updated = normalizedQuestions.map((q) => (q.id === editingQuestion.id ? questionItem : q));
       onUpdateQuestions(updated);
     } else {
-      onUpdateQuestions([questionItem, ...questions]);
+      onUpdateQuestions([questionItem, ...normalizedQuestions]);
+    }
+
+    if (!categories.includes(cat)) {
+      const updatedCustom = [...customCategories, cat];
+      setCustomCategories(updatedCustom);
+      localStorage.setItem('cothi_custom_quiz_categories', JSON.stringify(updatedCustom));
     }
 
     setIsCreatingNew(false);
     setEditingQuestion(null);
+  };
+
+  const handleAddCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = newCategoryName.trim();
+    if (!cleanName) return;
+
+    if (!categories.includes(cleanName)) {
+      const updated = [...customCategories, cleanName];
+      setCustomCategories(updated);
+      localStorage.setItem('cothi_custom_quiz_categories', JSON.stringify(updated));
+    }
+    setSelectedCategory(cleanName);
+    setBulkImportCategory(cleanName);
+    setNewCategoryName('');
+    setShowNewCategoryModal(false);
+  };
+
+  const handleCategorySelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === '__add_new_category__') {
+      setShowNewCategoryModal(true);
+    } else {
+      setSelectedCategory(val);
+      if (val !== 'all') {
+        setBulkImportCategory(val);
+      }
+    }
   };
 
   const handleDeleteQuestion = (id: string) => {
@@ -219,7 +273,7 @@ export default function QuizManagerTab({
             cleanOptionText(currentQ.opts[3])
           ],
           correctAnswer: currentQ.correctAnswer ?? 0,
-          category: 'Nhập từ văn bản',
+          category: bulkImportCategory.trim() || 'Tiếng Anh',
         });
       }
 
@@ -228,10 +282,10 @@ export default function QuizManagerTab({
         return;
       }
 
-      onUpdateQuestions([...parsedQuestions, ...questions]);
+      onUpdateQuestions([...parsedQuestions, ...normalizedQuestions]);
       setShowBulkImportModal(false);
       setBulkImportText('');
-      alert(`Đã nhập thành công ${parsedQuestions.length} câu hỏi mới!`);
+      alert(`Đã nhập thành công ${parsedQuestions.length} câu hỏi mới cho môn "${bulkImportCategory.trim() || 'Tiếng Anh'}"!`);
     } catch (e: any) {
       setImportError(`Lỗi định dạng: ${e.message}`);
     }
@@ -454,15 +508,21 @@ export default function QuizManagerTab({
           <Filter className="w-3.5 h-3.5 text-purple-400 shrink-0" />
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={handleCategorySelectChange}
             className="bg-[#120520] border border-purple-500/30 rounded-2xl px-3 py-2.5 text-xs text-purple-200 focus:border-purple-400 focus:outline-none cursor-pointer"
           >
-            <option value="all">Tất cả danh mục ({questions.length})</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat} ({questions.filter((q) => q.category === cat).length})
-              </option>
-            ))}
+            <option value="all">Tất cả danh mục ({normalizedQuestions.length})</option>
+            {categories.map((cat) => {
+              const count = normalizedQuestions.filter((q) => q.category === cat).length;
+              return (
+                <option key={cat} value={cat}>
+                  {cat} ({count})
+                </option>
+              );
+            })}
+            <option value="__add_new_category__" className="text-pink-300 font-bold bg-purple-950">
+              + Môn mới...
+            </option>
           </select>
         </div>
       </div>
@@ -620,14 +680,20 @@ export default function QuizManagerTab({
 
               {/* Category */}
               <div className="space-y-1">
-                <label className="font-bold text-purple-300 block">Danh mục / Chủ đề:</label>
+                <label className="font-bold text-purple-300 block">Môn học / Danh mục đề thi:</label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Cố Thị Lore, Tâm Lý Học, Văn Hóa Đọc..."
+                  list="quiz-category-list"
+                  placeholder="Ví dụ: Tiếng Anh, Hóa Học, Vật Lý, Cố Thị Lore..."
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
                   className="w-full bg-[#0E0317] border border-purple-500/30 rounded-xl p-2.5 text-white focus:border-purple-400 focus:outline-none"
                 />
+                <datalist id="quiz-category-list">
+                  {categories.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Options A, B, C, D */}
@@ -715,6 +781,35 @@ export default function QuizManagerTab({
               </button>
             </div>
 
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5" />
+                <span>Chọn danh mục / Môn học cho các câu hỏi nhập đợt này:</span>
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={bulkImportCategory}
+                  onChange={(e) => {
+                    if (e.target.value === '__add_new_in_bulk__') {
+                      setShowNewCategoryModal(true);
+                    } else {
+                      setBulkImportCategory(e.target.value);
+                    }
+                  }}
+                  className="flex-1 bg-[#0E0317] border border-purple-500/30 rounded-xl px-3 py-2 text-xs text-white focus:border-purple-400 focus:outline-none cursor-pointer"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                  <option value="__add_new_in_bulk__" className="text-pink-300 font-bold">
+                    + Thêm môn học mới...
+                  </option>
+                </select>
+              </div>
+            </div>
+
             <p className="text-xs text-purple-200/80">
               Dán dữ liệu mảng JSON hoặc văn bản trắc nghiệm theo định dạng mẫu:
             </p>
@@ -761,6 +856,63 @@ export default function QuizManagerTab({
                 <span>Tiến Hành Nhập</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL ADD NEW SUBJECT / CATEGORY (+ MÔN MỚI) */}
+      {/* ========================================================================= */}
+      {showNewCategoryModal && (
+        <div className="fixed inset-0 z-[13500] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#17082A] border border-purple-500/40 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+              <h3 className="text-sm font-bold text-white font-comfortaa flex items-center gap-2">
+                <span>📚</span>
+                <span>Thêm Môn Học / Danh Mục Mới</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowNewCategoryModal(false)}
+                className="text-purple-300 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategorySubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs text-purple-200/90 font-medium">
+                  Nhập tên môn học / danh mục đề thi (ví dụ: Hóa Học, Sinh Học, Lịch Sử, v.v.):
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Tên môn học mới..."
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="w-full bg-[#0E0317] border border-purple-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-purple-300/40 focus:border-pink-400 focus:outline-none font-medium"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowNewCategoryModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-purple-500/30 text-purple-200 text-xs font-bold cursor-pointer hover:bg-purple-900/30"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newCategoryName.trim()}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:brightness-110 text-white text-xs font-extrabold cursor-pointer shadow-lg shadow-purple-600/20 disabled:opacity-50"
+                >
+                  Tạo Môn Mới
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
