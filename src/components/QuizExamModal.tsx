@@ -13,6 +13,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { QuizQuestion } from '../types';
+import { cleanQuestionText, cleanOptionText } from '../utils/quizUtils';
 import FruitNinjaOverlay from './FruitNinjaOverlay';
 
 interface ShuffledQuizItem {
@@ -98,8 +99,8 @@ export default function QuizExamModal({
 
       return {
         id: q.id,
-        question: q.question,
-        options: shuffledOptions.map((o) => o.text),
+        question: cleanQuestionText(q.question),
+        options: shuffledOptions.map((o) => cleanOptionText(o.text)),
         originalCorrectAnswerIndex: q.correctAnswer,
         shuffledCorrectIndex: shuffledCorrectIndex >= 0 ? shuffledCorrectIndex : 0,
         category: q.category,

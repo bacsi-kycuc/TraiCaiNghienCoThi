@@ -17,6 +17,7 @@ import {
   Filter
 } from 'lucide-react';
 import { QuizQuestion, Settings } from '../types';
+import { cleanQuestionText, cleanOptionText } from '../utils/quizUtils';
 
 interface QuizManagerTabProps {
   settings: Settings;
@@ -111,12 +112,12 @@ export default function QuizManagerTab({
 
     const questionItem: QuizQuestion = {
       id: editingQuestion ? editingQuestion.id : `q_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      question: formQuestion.trim(),
+      question: cleanQuestionText(formQuestion.trim()),
       options: [
-        formOptionA.trim(),
-        formOptionB.trim(),
-        formOptionC.trim(),
-        formOptionD.trim(),
+        cleanOptionText(formOptionA.trim()),
+        cleanOptionText(formOptionB.trim()),
+        cleanOptionText(formOptionC.trim()),
+        cleanOptionText(formOptionD.trim()),
       ],
       correctAnswer: formCorrectAnswer,
       category: formCategory.trim() || 'Chung',
@@ -150,9 +151,14 @@ export default function QuizManagerTab({
         const list = Array.isArray(parsed) ? parsed : [parsed];
         const validated: QuizQuestion[] = list.map((item, idx) => ({
           id: item.id || `q_imp_${Date.now()}_${idx}`,
-          question: item.question || `Câu hỏi ${idx + 1}`,
+          question: cleanQuestionText(item.question || `Câu hỏi ${idx + 1}`),
           options: Array.isArray(item.options) && item.options.length === 4
-            ? [item.options[0], item.options[1], item.options[2], item.options[3]]
+            ? [
+                cleanOptionText(item.options[0]), 
+                cleanOptionText(item.options[1]), 
+                cleanOptionText(item.options[2]), 
+                cleanOptionText(item.options[3])
+              ]
             : ['Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D'],
           correctAnswer: typeof item.correctAnswer === 'number' ? item.correctAnswer : 0,
           category: item.category || 'Nhập khẩu',
@@ -170,23 +176,28 @@ export default function QuizManagerTab({
       let currentQ: Partial<QuizQuestion> & { opts: string[] } = { opts: [] };
 
       for (const line of lines) {
-        if (/^(câu|bài|\d+[\.:])/i.test(line)) {
+        if (/^(câu|cau|bài|bai|q|question|\d+[\.:\-\/\)])/i.test(line)) {
           if (currentQ.question && currentQ.opts.length === 4) {
             parsedQuestions.push({
               id: `q_txt_${Date.now()}_${parsedQuestions.length}`,
-              question: currentQ.question,
-              options: [currentQ.opts[0], currentQ.opts[1], currentQ.opts[2], currentQ.opts[3]],
+              question: cleanQuestionText(currentQ.question),
+              options: [
+                cleanOptionText(currentQ.opts[0]), 
+                cleanOptionText(currentQ.opts[1]), 
+                cleanOptionText(currentQ.opts[2]), 
+                cleanOptionText(currentQ.opts[3])
+              ],
               correctAnswer: currentQ.correctAnswer ?? 0,
               category: 'Nhập từ văn bản',
             });
           }
           currentQ = {
-            question: line.replace(/^(câu|bài|\d+[\.:\s]+)/i, '').trim(),
+            question: cleanQuestionText(line),
             opts: [],
             correctAnswer: 0,
           };
-        } else if (/^[A-D][\.\:\)]/i.test(line)) {
-          const optText = line.replace(/^[A-D][\.\:\)\s]+/i, '').trim();
+        } else if (/^[A-D][\.\:\)\-\/]/i.test(line)) {
+          const optText = cleanOptionText(line);
           currentQ.opts.push(optText);
         } else if (/^(đáp án|đáp án đúng|key)[\:\s]+([A-D])/i.test(line)) {
           const match = line.match(/(?:đáp án|đáp án đúng|key)[\:\s]+([A-D])/i);
@@ -200,8 +211,13 @@ export default function QuizManagerTab({
       if (currentQ.question && currentQ.opts.length === 4) {
         parsedQuestions.push({
           id: `q_txt_${Date.now()}_${parsedQuestions.length}`,
-          question: currentQ.question,
-          options: [currentQ.opts[0], currentQ.opts[1], currentQ.opts[2], currentQ.opts[3]],
+          question: cleanQuestionText(currentQ.question),
+          options: [
+            cleanOptionText(currentQ.opts[0]), 
+            cleanOptionText(currentQ.opts[1]), 
+            cleanOptionText(currentQ.opts[2]), 
+            cleanOptionText(currentQ.opts[3])
+          ],
           correctAnswer: currentQ.correctAnswer ?? 0,
           category: 'Nhập từ văn bản',
         });
@@ -377,6 +393,31 @@ export default function QuizManagerTab({
             <Download className="w-3.5 h-3.5" />
             <span>Xuất JSON</span>
           </button>
+
+          {questions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const cleanedAll = questions.map((q) => ({
+                  ...q,
+                  question: cleanQuestionText(q.question),
+                  options: [
+                    cleanOptionText(q.options[0]),
+                    cleanOptionText(q.options[1]),
+                    cleanOptionText(q.options[2]),
+                    cleanOptionText(q.options[3]),
+                  ] as [string, string, string, string],
+                }));
+                onUpdateQuestions(cleanedAll);
+                alert(`Đã tự động chuẩn hóa và gọt sạch số thứ tự cho toàn bộ ${questions.length} câu hỏi!`);
+              }}
+              className="px-3 py-2 rounded-xl bg-purple-900/60 border border-purple-400/40 text-pink-200 hover:bg-purple-800/80 hover:text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Tự động loại bỏ các tiền tố số thứ tự thừa (ví dụ: '25: ', '44. ') trong toàn bộ kho câu hỏi hiện tại"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Chuẩn Hóa Đề ({questions.length})</span>
+            </button>
+          )}
 
           {questions.length > 0 && (
             <button
