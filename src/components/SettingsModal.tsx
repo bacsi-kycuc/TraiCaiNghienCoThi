@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  QrCode,
+  Sparkles,
 } from "lucide-react";
 import { Genre, Settings, Prompt, RegRecord, QuizQuestion } from "../types";
 import { 
@@ -27,6 +29,7 @@ import {
   requestPersistentStorage,
   getFromIndexedDB
 } from "../lib/indexedDbBackup";
+import { compressImageFile, compressQrImageFile } from "../utils/imageUtils";
 import QuizManagerTab from "./QuizManagerTab";
 
 interface SettingsModalProps {
@@ -204,23 +207,69 @@ export default function SettingsModal({
     setFacebookUrl(settings.facebookLink || "");
   }, [settings.discordLink, settings.facebookLink]);
 
+  // Local state for QR code configurations to prevent IME typing focus loss
+  const [localQrTitle, setLocalQrTitle] = useState(
+    settings.qrCodeTitle || "Quỹ Tiếp Tế Viện Cố Thị",
+  );
+  const [localQrNote, setLocalQrNote] = useState(
+    settings.qrCodeNote || "",
+  );
+  const [qrUrlInput, setQrUrlInput] = useState("");
+
+  useEffect(() => {
+    setLocalQrTitle(settings.qrCodeTitle || "Quỹ Tiếp Tế Viện Cố Thị");
+    setLocalQrNote(settings.qrCodeNote || "");
+  }, [settings.qrCodeTitle, settings.qrCodeNote]);
+
+  const handleQrImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressedBase64 = await compressQrImageFile(file);
+        onSaveSettings("qrCodeImage", compressedBase64);
+        onSaveSettings("qrCodeFileName", file.name);
+      } catch (err) {
+        console.warn("Lỗi nén ảnh QR, sử dụng đọc trực tiếp:", err);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            onSaveSettings("qrCodeImage", event.target.result as string);
+            onSaveSettings("qrCodeFileName", file.name);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
   if (!isOpen) return null;
 
-  const handleImageUpload = (
+  const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     key: "welcomeBgImage" | "hospitalBgImage" | "cainhienBgImage",
     labelKey: "welcomeBgFileName" | "hospitalBgFileName" | "cainhienBgFileName",
   ) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          onSaveSettings(key, event.target.result as string);
-          onSaveSettings(labelKey, file.name);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressImageFile(file, {
+          maxWidth: 1600,
+          maxHeight: 1000,
+          quality: 0.75,
+        });
+        onSaveSettings(key, compressedBase64);
+        onSaveSettings(labelKey, file.name);
+      } catch (err) {
+        console.warn("Lỗi nén ảnh hình nền, sử dụng đọc trực tiếp:", err);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            onSaveSettings(key, event.target.result as string);
+            onSaveSettings(labelKey, file.name);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -642,6 +691,149 @@ export default function SettingsModal({
                       Xóa
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* QR Code Configuration Section (Ngay dưới mục thay hình nền) */}
+              <div className="p-4 sm:p-5 border border-purple-500/30 rounded-2xl bg-gradient-to-br from-purple-950/40 via-slate-900/60 to-indigo-950/40 space-y-4 shadow-lg">
+                <div className="flex items-center justify-between pb-3 border-b border-purple-500/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#051F45] border border-[#F2C4CD]/30 flex items-center justify-center">
+                      <QrCode className="w-4 h-4 text-[#F2C4CD]" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-extrabold text-white uppercase tracking-wider block font-comfortaa">
+                        📱 Cài Đặt Mã QR (Nút Nổi Ngoài Web)
+                      </span>
+                      <span className="text-[11px] text-purple-300/80">
+                        Hiển thị nút QR nổi góc để người dùng quét ủng hộ, tham gia nhóm hoặc liên hệ
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Toggle ON/OFF Switch */}
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={settings.qrCodeEnabled !== false}
+                      onChange={(e) => onSaveSettings("qrCodeEnabled", e.target.checked)}
+                      className="sr-only peer"
+                      id="toggle-qr-code-enabled"
+                    />
+                    <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                {/* Upload or Link QR Image */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start pt-1">
+                  {/* Left: Preview */}
+                  <div className="flex flex-col items-center justify-center p-3 bg-black/40 border border-purple-500/20 rounded-xl space-y-2">
+                    {settings.qrCodeImage ? (
+                      <div className="relative group/preview w-28 h-28 bg-white p-1.5 rounded-xl shadow border border-purple-300/40 flex items-center justify-center">
+                        <img
+                          src={settings.qrCodeImage}
+                          alt="QR Preview"
+                          className="w-full h-full object-contain rounded-lg"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-28 h-28 border-2 border-dashed border-purple-500/30 rounded-xl flex flex-col items-center justify-center text-purple-400/50 text-[10px] text-center p-2">
+                        <QrCode className="w-8 h-8 mb-1 opacity-60" />
+                        <span>Chưa có ảnh</span>
+                      </div>
+                    )}
+                    <span className="text-[10px] text-purple-200/60 italic truncate max-w-[120px]">
+                      {settings.qrCodeFileName || "Chưa tải ảnh QR"}
+                    </span>
+                  </div>
+
+                  {/* Right: Upload Controls & Title & Note */}
+                  <div className="sm:col-span-2 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="file"
+                        id="qr-code-file-input"
+                        accept="image/*"
+                        onChange={handleQrImageUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById("qr-code-file-input")?.click()}
+                        className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold rounded-xl shadow cursor-pointer transition flex items-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Tải ảnh QR từ máy</span>
+                      </button>
+
+                      {settings.qrCodeImage && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSaveSettings("qrCodeImage", "");
+                            onSaveSettings("qrCodeFileName", "");
+                          }}
+                          className="px-3 py-1.5 bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-200 text-xs font-bold rounded-xl cursor-pointer transition"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Dán Link Ảnh QR trực tiếp */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Hoặc dán liên kết URL ảnh QR trực tiếp..."
+                        value={qrUrlInput}
+                        onChange={(e) => setQrUrlInput(e.target.value)}
+                        className="flex-1 px-3 py-1.5 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!qrUrlInput.trim()) return;
+                          onSaveSettings("qrCodeImage", qrUrlInput.trim());
+                          onSaveSettings("qrCodeFileName", "Link ảnh URL");
+                          setQrUrlInput("");
+                          alert("✅ Đã cập nhật ảnh mã QR từ liên kết!");
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-600 cursor-pointer transition"
+                      >
+                        Dán
+                      </button>
+                    </div>
+
+                    {/* Tiêu đề mã QR */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-300 block">
+                        🏷️ Tiêu đề mã QR (Tên hiển thị khi rê chuột & tiêu đề pop-up):
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: Quỹ Tiếp Tế Viện Cố Thị, Group Giao Lưu..."
+                        value={localQrTitle}
+                        onChange={(e) => setLocalQrTitle(e.target.value)}
+                        onBlur={() => onSaveSettings("qrCodeTitle", localQrTitle.trim())}
+                        className="w-full px-3 py-2 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500"
+                      />
+                    </div>
+
+                    {/* Lời nhắn / Ghi chú */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-300 block">
+                        📝 Ghi chú / Lời nhắn nội dung bên dưới mã QR:
+                      </label>
+                      <textarea
+                        rows={3}
+                        placeholder="Ví dụ: Mọi sự ủng hộ của bé sẽ giúp các anh điều dưỡng có thêm kinh phí duy trì máy chủ... (kèm STK, lời dặn...)"
+                        value={localQrNote}
+                        onChange={(e) => setLocalQrNote(e.target.value)}
+                        onBlur={() => onSaveSettings("qrCodeNote", localQrNote.trim())}
+                        className="w-full px-3 py-2 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500 resize-none font-sans"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

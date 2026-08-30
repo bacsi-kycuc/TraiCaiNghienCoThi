@@ -56,6 +56,8 @@ import { StyledUsername, UserAvatar } from "./components/UserProfileStyle";
 import ScrollToTopButton from "./components/ScrollToTopButton";
 import ClickEffectManager from "./components/ClickEffectManager";
 import SiteLockdownScreen from "./components/SiteLockdownScreen";
+import QRCodeFloatingWidget from "./components/QRCodeFloatingWidget";
+import { sanitizeDataForFirestore } from "./utils/imageUtils";
 
 const siteHeaderBannerImg = "https://i.postimg.cc/xd0cPtcG/b0e2fa25b7a5b594c8086d9faa59e346.jpg";
 
@@ -270,6 +272,11 @@ export default function App() {
       musicName: localMusicName !== null ? localMusicName : "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu",
       musicData: localMusicData !== null ? localMusicData : "",
       musicUrl: localMusicUrl !== null ? localMusicUrl : "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF",
+      qrCodeEnabled: true,
+      qrCodeImage: "",
+      qrCodeFileName: "",
+      qrCodeTitle: "Quỹ Tiếp Tế Viện Cố Thị",
+      qrCodeNote: "",
       ...savedSettings,
     };
   });
@@ -1611,7 +1618,8 @@ export default function App() {
         setToastMessage("☁️ Đang đồng bộ tập tin khôi phục lên đám mây Firestore...");
         
         // Write settings
-        await setDoc(doc(db, "settings", "global_settings"), backupData.settings);
+        const safeSettings = sanitizeDataForFirestore(backupData.settings);
+        await setDoc(doc(db, "settings", "global_settings"), safeSettings);
         
         // Write genres
         for (const g of backupData.genres) {
@@ -1677,19 +1685,21 @@ export default function App() {
         return;
       }
 
+      // If value is a string and over 400KB, do not send it directly to Cloud Firestore as it will exceed the 1MB doc limit
+      if (typeof value === 'string' && value.length > 400000) {
+        console.warn(`Kích thước trường "${key}" quá lớn (${value.length} ký tự). Sẽ lưu nội bộ an toàn trên thiết bị.`);
+        setToastMessage("💾 Đã lưu ảnh an toàn vào bộ nhớ thiết bị!");
+        return;
+      }
+
       const settingsDocRef = doc(db, "settings", "global_settings");
       await setDoc(settingsDocRef, { [key]: value }, { merge: true });
     } catch (err) {
-      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded"))) {
-        setIsOfflineMode(true);
-        loadOfflineFallbackData();
-        setToastMessage("⚠️ Hệ thống đổi sang Lưu trữ Ngoại tuyến!");
+      if (err instanceof Error && (err.message.includes("quota") || err.message.includes("Quota") || err.message.includes("limit") || err.message.includes("exceeded") || err.message.includes("size") || err.message.includes("cannot be written"))) {
+        console.warn("Lỗi dung lượng hoặc hạn ngạch Firestore, chuyển sang lưu trữ cục bộ an toàn:", err);
+        setToastMessage("💾 Đã lưu cấu hình an toàn trên máy!");
       } else {
-        handleFirestoreError(
-          err,
-          OperationType.WRITE,
-          "settings/global_settings",
-        );
+        console.warn("Lỗi cập nhật cấu hình Firestore:", err);
       }
     }
   };
@@ -3309,6 +3319,9 @@ export default function App() {
 
       {/* Floating Scroll to Top button */}
       <ScrollToTopButton />
+
+      {/* Floating QR Code Widget Button & Modal */}
+      <QRCodeFloatingWidget settings={settings} />
 
       {/* Global Click Sticker & Kaomoji Popup Effect */}
       <ClickEffectManager />

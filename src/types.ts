@@ -79,6 +79,13 @@ export interface Settings {
   quizPassingScoreTier1?: number; // default 7.0
   quizPassingScoreTier2?: number; // default 9.0
 
+  // QR Code Settings
+  qrCodeEnabled?: boolean;
+  qrCodeImage?: string;
+  qrCodeFileName?: string;
+  qrCodeTitle?: string;
+  qrCodeNote?: string;
+
   // Site Lockdown / Close Door Setting
   isSiteClosed?: boolean;
 }
