@@ -22,6 +22,8 @@ import {
   ChevronRight,
   QrCode,
   Sparkles,
+  Save,
+  Check,
 } from "lucide-react";
 import { Genre, Settings, Prompt, RegRecord, QuizQuestion } from "../types";
 import { 
@@ -226,13 +228,30 @@ export default function SettingsModal({
     setLocalQrNote(settings.qrCodeNote || "");
   }, [settings.qrCodeTitle, settings.qrCodeNote]);
 
+  const [qrSaveStatus, setQrSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  const handleSaveQrConfig = () => {
+    setQrSaveStatus("saving");
+    onSaveSettings("qrCodeTitle", localQrTitle.trim() || "Quỹ Tiếp Tế Viện Cố Thị");
+    onSaveSettings("qrCodeNote", localQrNote.trim());
+    setTimeout(() => {
+      setQrSaveStatus("saved");
+      setTimeout(() => setQrSaveStatus("idle"), 2500);
+    }, 400);
+  };
+
   const handleQrImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setQrSaveStatus("saving");
       try {
         const compressedBase64 = await compressQrImageFile(file);
         onSaveSettings("qrCodeImage", compressedBase64);
         onSaveSettings("qrCodeFileName", file.name);
+        setTimeout(() => {
+          setQrSaveStatus("saved");
+          setTimeout(() => setQrSaveStatus("idle"), 2500);
+        }, 300);
       } catch (err) {
         console.warn("Lỗi nén ảnh QR, sử dụng đọc trực tiếp:", err);
         const reader = new FileReader();
@@ -240,6 +259,8 @@ export default function SettingsModal({
           if (event.target?.result) {
             onSaveSettings("qrCodeImage", event.target.result as string);
             onSaveSettings("qrCodeFileName", file.name);
+            setQrSaveStatus("saved");
+            setTimeout(() => setQrSaveStatus("idle"), 2500);
           }
         };
         reader.readAsDataURL(file);
@@ -786,51 +807,41 @@ export default function SettingsModal({
                     </div>
 
                     {/* Dán Link Ảnh QR trực tiếp */}
-                    <div className="space-y-1.5">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Hoặc dán liên kết URL ảnh QR trực tiếp..."
-                          value={qrUrlInput}
-                          onChange={(e) => setQrUrlInput(e.target.value)}
-                          className="flex-1 px-3 py-1.5 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!qrUrlInput.trim()) return;
-                            const rawUrl = qrUrlInput.trim();
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Hoặc dán liên kết URL ảnh QR trực tiếp..."
+                        value={qrUrlInput}
+                        onChange={(e) => setQrUrlInput(e.target.value)}
+                        className="flex-1 px-3 py-1.5 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!qrUrlInput.trim()) return;
+                          const rawUrl = qrUrlInput.trim();
 
-                            if (isExpiringExternalUrl(rawUrl)) {
-                              alert("⚠️ Chú ý: Link ảnh này (từ Discord hoặc dịch vụ tạm) sẽ tự động bị hết hạn sau 24 giờ! Hệ thống đang cố gắng chuyển đổi ảnh thành dữ liệu vĩnh viễn...");
-                            }
+                          if (isExpiringExternalUrl(rawUrl)) {
+                            alert("⚠️ Chú ý: Link ảnh này (từ Discord hoặc dịch vụ tạm) sẽ tự động bị hết hạn sau 24 giờ! Hệ thống đang cố gắng chuyển đổi ảnh thành dữ liệu vĩnh viễn...");
+                          }
 
-                            // Try to convert external URL into permanent Base64 Data URI so it never expires
-                            const permanentData = await tryConvertUrlToPermanentBase64(rawUrl);
-                            onSaveSettings("qrCodeImage", permanentData);
-                            onSaveSettings("qrCodeFileName", rawUrl.startsWith("data:") ? "Ảnh QR vĩnh viễn" : "Link ảnh URL");
-                            setQrUrlInput("");
-                            alert("✅ Đã cập nhật ảnh mã QR! Dữ liệu đã được lưu trữ an toàn.");
-                          }}
-                          className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-600 cursor-pointer transition"
-                        >
-                          Dán
-                        </button>
-                      </div>
-
-                      {/* Gợi ý lưu trữ vĩnh viễn */}
-                      <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/20 text-[11px] text-purple-200/85 leading-relaxed">
-                        <span className="font-bold text-amber-300">💡 Giải đáp & Mẹo giữ mã QR vĩnh viễn:</span>
-                        <p className="mt-0.5">
-                          Mã QR <b>không hề tự hết hạn</b>. Nếu trước đó bạn dán link từ <b>Discord</b>, link của Discord sẽ tự hủy sau đúng 24h khiến ảnh bị mất. Hãy bấm nút <b>"Tải ảnh QR từ máy"</b> — hệ thống sẽ tự động nén nét cao và lưu trữ <b>vĩnh viễn trên Đám mây Cloud Firestore</b> cho toàn bộ người dùng!
-                        </p>
-                      </div>
+                          // Try to convert external URL into permanent Base64 Data URI so it never expires
+                          const permanentData = await tryConvertUrlToPermanentBase64(rawUrl);
+                          onSaveSettings("qrCodeImage", permanentData);
+                          onSaveSettings("qrCodeFileName", rawUrl.startsWith("data:") ? "Ảnh QR vĩnh viễn" : "Link ảnh URL");
+                          setQrUrlInput("");
+                          alert("✅ Đã cập nhật ảnh mã QR! Dữ liệu đã được lưu trữ an toàn.");
+                        }}
+                        className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-600 cursor-pointer transition"
+                      >
+                        Dán
+                      </button>
                     </div>
 
                     {/* Tiêu đề mã QR */}
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-slate-300 block">
-                        🏷️ Tiêu đề mã QR (Tên hiển thị khi rê chuột & tiêu đề pop-up):
+                        🏷️ Tiêu đề mã QR:
                       </label>
                       <input
                         type="text"
@@ -855,6 +866,49 @@ export default function SettingsModal({
                         onBlur={() => onSaveSettings("qrCodeNote", localQrNote.trim())}
                         className="w-full px-3 py-2 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500 resize-none font-sans"
                       />
+                    </div>
+
+                    {/* Nút Lưu cấu hình Mã QR dành cho Admin */}
+                    <div className="pt-2 flex items-center justify-between gap-3 border-t border-purple-500/20">
+                      <div className="text-[11px] text-purple-300/80 flex items-center gap-1.5">
+                        {settings.qrCodeImage ? (
+                          <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" /> Đã có ảnh QR sẵn sàng hiển thị
+                          </span>
+                        ) : (
+                          <span className="text-amber-400/90 italic">
+                            Chưa có ảnh QR (hãy tải ảnh hoặc dán link ở trên)
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSaveQrConfig}
+                        disabled={qrSaveStatus === "saving"}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md ${
+                          qrSaveStatus === "saved"
+                            ? "bg-emerald-600 text-white shadow-emerald-500/20"
+                            : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-purple-900/30"
+                        }`}
+                      >
+                        {qrSaveStatus === "saved" ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>Đã lưu thành công!</span>
+                          </>
+                        ) : qrSaveStatus === "saving" ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            <span>Đang lưu...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Lưu cấu hình QR</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
