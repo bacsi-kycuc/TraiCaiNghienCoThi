@@ -29,7 +29,12 @@ import {
   requestPersistentStorage,
   getFromIndexedDB
 } from "../lib/indexedDbBackup";
-import { compressImageFile, compressQrImageFile } from "../utils/imageUtils";
+import { 
+  compressImageFile, 
+  compressQrImageFile, 
+  isExpiringExternalUrl, 
+  tryConvertUrlToPermanentBase64 
+} from "../utils/imageUtils";
 import QuizManagerTab from "./QuizManagerTab";
 
 interface SettingsModalProps {
@@ -781,27 +786,45 @@ export default function SettingsModal({
                     </div>
 
                     {/* Dán Link Ảnh QR trực tiếp */}
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Hoặc dán liên kết URL ảnh QR trực tiếp..."
-                        value={qrUrlInput}
-                        onChange={(e) => setQrUrlInput(e.target.value)}
-                        className="flex-1 px-3 py-1.5 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!qrUrlInput.trim()) return;
-                          onSaveSettings("qrCodeImage", qrUrlInput.trim());
-                          onSaveSettings("qrCodeFileName", "Link ảnh URL");
-                          setQrUrlInput("");
-                          alert("✅ Đã cập nhật ảnh mã QR từ liên kết!");
-                        }}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-600 cursor-pointer transition"
-                      >
-                        Dán
-                      </button>
+                    <div className="space-y-1.5">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Hoặc dán liên kết URL ảnh QR trực tiếp..."
+                          value={qrUrlInput}
+                          onChange={(e) => setQrUrlInput(e.target.value)}
+                          className="flex-1 px-3 py-1.5 bg-black/40 border border-slate-700 focus:border-purple-400 rounded-xl outline-none text-xs text-white placeholder-slate-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!qrUrlInput.trim()) return;
+                            const rawUrl = qrUrlInput.trim();
+
+                            if (isExpiringExternalUrl(rawUrl)) {
+                              alert("⚠️ Chú ý: Link ảnh này (từ Discord hoặc dịch vụ tạm) sẽ tự động bị hết hạn sau 24 giờ! Hệ thống đang cố gắng chuyển đổi ảnh thành dữ liệu vĩnh viễn...");
+                            }
+
+                            // Try to convert external URL into permanent Base64 Data URI so it never expires
+                            const permanentData = await tryConvertUrlToPermanentBase64(rawUrl);
+                            onSaveSettings("qrCodeImage", permanentData);
+                            onSaveSettings("qrCodeFileName", rawUrl.startsWith("data:") ? "Ảnh QR vĩnh viễn" : "Link ảnh URL");
+                            setQrUrlInput("");
+                            alert("✅ Đã cập nhật ảnh mã QR! Dữ liệu đã được lưu trữ an toàn.");
+                          }}
+                          className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-600 cursor-pointer transition"
+                        >
+                          Dán
+                        </button>
+                      </div>
+
+                      {/* Gợi ý lưu trữ vĩnh viễn */}
+                      <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/20 text-[11px] text-purple-200/85 leading-relaxed">
+                        <span className="font-bold text-amber-300">💡 Giải đáp & Mẹo giữ mã QR vĩnh viễn:</span>
+                        <p className="mt-0.5">
+                          Mã QR <b>không hề tự hết hạn</b>. Nếu trước đó bạn dán link từ <b>Discord</b>, link của Discord sẽ tự hủy sau đúng 24h khiến ảnh bị mất. Hãy bấm nút <b>"Tải ảnh QR từ máy"</b> — hệ thống sẽ tự động nén nét cao và lưu trữ <b>vĩnh viễn trên Đám mây Cloud Firestore</b> cho toàn bộ người dùng!
+                        </p>
+                      </div>
                     </div>
 
                     {/* Tiêu đề mã QR */}

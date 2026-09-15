@@ -273,10 +273,10 @@ export default function App() {
       musicData: localMusicData !== null ? localMusicData : "",
       musicUrl: localMusicUrl !== null ? localMusicUrl : "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF",
       qrCodeEnabled: true,
-      qrCodeImage: "",
-      qrCodeFileName: "",
-      qrCodeTitle: "Quỹ Tiếp Tế Viện Cố Thị",
-      qrCodeNote: "",
+      qrCodeImage: localStorage.getItem("user_qrCodeImage") || "",
+      qrCodeFileName: localStorage.getItem("user_qrCodeFileName") || "",
+      qrCodeTitle: localStorage.getItem("user_qrCodeTitle") || "Quỹ Tiếp Tế Viện Cố Thị",
+      qrCodeNote: localStorage.getItem("user_qrCodeNote") || "",
       ...savedSettings,
     };
   });
@@ -976,12 +976,18 @@ export default function App() {
           const mergedUrl = localMusicUrl !== null ? localMusicUrl : remoteData.musicUrl;
           const mergedName = localMusicName !== null ? localMusicName : remoteData.musicName;
 
-          setSettings({
+          setSettings((prev) => ({
             ...remoteData,
+            // Preserve QR code fields if remoteData doesn't have them
+            qrCodeEnabled: remoteData.qrCodeEnabled !== undefined ? remoteData.qrCodeEnabled : (prev.qrCodeEnabled ?? true),
+            qrCodeImage: remoteData.qrCodeImage || prev.qrCodeImage || localStorage.getItem("user_qrCodeImage") || "",
+            qrCodeFileName: remoteData.qrCodeFileName || prev.qrCodeFileName || localStorage.getItem("user_qrCodeFileName") || "",
+            qrCodeTitle: remoteData.qrCodeTitle || prev.qrCodeTitle || localStorage.getItem("user_qrCodeTitle") || "Quỹ Tiếp Tế Viện Cố Thị",
+            qrCodeNote: remoteData.qrCodeNote !== undefined ? remoteData.qrCodeNote : (prev.qrCodeNote || localStorage.getItem("user_qrCodeNote") || ""),
             musicName: mergedName === "Lullaby of Co Thi (Mặc định)" || !mergedName ? "CHÚ ĐẠI BI (VÔ LƯỢNG) - Masew, Khoi Vu" : mergedName,
             musicData: localMusicData !== null ? localMusicData : remoteData.musicData,
             musicUrl: mergedUrl === "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" || !mergedUrl ? "https://youtu.be/yh2h_YwILII?si=WUeSuNo9K2Yo0ZnF" : mergedUrl,
-          });
+          }));
         } else if (!hasSeededSettings) {
           hasSeededSettings = true;
           // Seed initial default settings to Firestore
@@ -1141,6 +1147,46 @@ export default function App() {
       }
     );
 
+    // g. Dedicated QR Code configuration real-time synchronization
+    // Stored in a separate lightweight document so it NEVER collides with wallpapers/audio files
+    // or exceeds the 1MB Firestore document limit.
+    const qrDocRef = doc(db, "settings", "qr_code_config");
+    const unsubQr = onSnapshot(
+      qrDocRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const qrData = snapshot.data();
+          if (qrData) {
+            setSettings((prev) => {
+              const updated = {
+                ...prev,
+                qrCodeEnabled: qrData.qrCodeEnabled !== undefined ? qrData.qrCodeEnabled : prev.qrCodeEnabled,
+                qrCodeImage: qrData.qrCodeImage !== undefined ? qrData.qrCodeImage : prev.qrCodeImage,
+                qrCodeFileName: qrData.qrCodeFileName !== undefined ? qrData.qrCodeFileName : prev.qrCodeFileName,
+                qrCodeTitle: qrData.qrCodeTitle || prev.qrCodeTitle,
+                qrCodeNote: qrData.qrCodeNote !== undefined ? qrData.qrCodeNote : prev.qrCodeNote,
+              };
+              localStorage.setItem("local_settings", JSON.stringify(updated));
+              if (qrData.qrCodeImage) {
+                localStorage.setItem("user_qrCodeImage", qrData.qrCodeImage);
+                saveToIndexedDB("user_qrCodeImage", qrData.qrCodeImage).catch(() => {});
+              }
+              if (qrData.qrCodeTitle) {
+                localStorage.setItem("user_qrCodeTitle", qrData.qrCodeTitle);
+              }
+              if (qrData.qrCodeNote !== undefined) {
+                localStorage.setItem("user_qrCodeNote", qrData.qrCodeNote);
+              }
+              return updated;
+            });
+          }
+        }
+      },
+      (err) => {
+        console.warn("Lỗi đăng ký theo dõi qr_code_config từ Firestore: ", err);
+      }
+    );
+
     return () => {
       unsubSettings();
       unsubGenres();
@@ -1148,6 +1194,7 @@ export default function App() {
       unsubRecords();
       unsubVotes();
       unsubQuiz();
+      unsubQr();
     };
   }, []);
 
@@ -1662,6 +1709,12 @@ export default function App() {
       saveToIndexedDB(`user_${key}`, value).catch((e) => console.warn(e));
     }
 
+    // If it is a QR code configuration, store in dedicated storage so it is permanent and never lost
+    if (key.startsWith("qrCode")) {
+      localStorage.setItem(`user_${key}`, String(value));
+      saveToIndexedDB(`user_${key}`, value).catch((e) => console.warn(e));
+    }
+
     setSettings((prev) => {
       const updated = { ...prev, [key]: value };
       localStorage.setItem("local_settings", JSON.stringify(updated));
@@ -1678,6 +1731,18 @@ export default function App() {
       }
       return;
     }
+
+    // Persist QR Code to its dedicated Firestore document (settings/qr_code_config)
+    if (key.startsWith("qrCode")) {
+      try {
+        const qrDocRef = doc(db, "settings", "qr_code_config");
+        await setDoc(qrDocRef, { [key]: value, updatedAt: new Date().toISOString() }, { merge: true });
+        console.log(`[QR Cloud] Đã đồng bộ ${key} lên Firestore (settings/qr_code_config)`);
+      } catch (qrErr) {
+        console.warn("Lỗi lưu QR Code lên settings/qr_code_config Firestore:", qrErr);
+      }
+    }
+
     try {
       // If it is raw music data and it is excessively large, skip uploading huge stream bytes to global Firestore
       if (key === "musicData" && typeof value === 'string' && value.length > 50000) {

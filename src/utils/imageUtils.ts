@@ -86,14 +86,72 @@ export async function compressImageFile(
 
 /**
  * Specially optimized for QR code images: preserves sharp edges and high contrast
- * while limiting dimensions to 600x600 so file size is typically under 40-70KB.
+ * while limiting dimensions to 500x500 so file size is typically only 25-45KB.
+ * This ensures it fits comfortably in Firestore with instantaneous sync.
  */
 export async function compressQrImageFile(file: File): Promise<string> {
   return compressImageFile(file, {
-    maxWidth: 600,
-    maxHeight: 600,
-    quality: 0.85,
+    maxWidth: 500,
+    maxHeight: 500,
+    quality: 0.8,
     mimeType: 'image/jpeg',
+  });
+}
+
+/**
+ * Checks if an image URL is from a temporary or expiring CDN (like Discord CDN).
+ */
+export function isExpiringExternalUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.includes('cdn.discordapp.com') ||
+    lower.includes('media.discordapp.net') ||
+    lower.includes('temp-file') ||
+    lower.includes('tmpfiles') ||
+    lower.includes('expires=') ||
+    lower.includes('x-amz-expires=')
+  );
+}
+
+/**
+ * Attempts to download an external image via Canvas to convert it into a permanent Base64 Data URI.
+ * If CORS prevents it, returns the original URL.
+ */
+export async function tryConvertUrlToPermanentBase64(url: string): Promise<string> {
+  if (!url || !url.startsWith('http')) return url;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        let width = img.width;
+        let height = img.height;
+        const maxBound = 500;
+        if (width > maxBound || height > maxBound) {
+          const ratio = Math.min(maxBound / width, maxBound / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(url);
+          return;
+        }
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        const base64 = canvas.toDataURL('image/jpeg', 0.8);
+        resolve(base64);
+      } catch {
+        resolve(url);
+      }
+    };
+    img.onerror = () => resolve(url);
+    img.src = url;
   });
 }
 

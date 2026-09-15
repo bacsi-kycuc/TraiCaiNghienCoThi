@@ -70,7 +70,12 @@
         "quizTimeLimitMinutes": { "type": "integer" },
         "quizPassingScoreTier1": { "type": "number" },
         "quizPassingScoreTier2": { "type": "number" },
-        "isSiteClosed": { "type": "boolean" }
+        "isSiteClosed": { "type": "boolean" },
+        "qrCodeEnabled": { "type": "boolean" },
+        "qrCodeImage": { "type": "string" },
+        "qrCodeFileName": { "type": "string" },
+        "qrCodeTitle": { "type": "string" },
+        "qrCodeNote": { "type": "string" }
       }
     },
     "User": {
