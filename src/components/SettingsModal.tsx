@@ -125,6 +125,7 @@ export default function SettingsModal({
 
   // Lockdown confirmation state
   const [showLockConfirmModal, setShowLockConfirmModal] = useState(false);
+  const [showBypassConfirmModal, setShowBypassConfirmModal] = useState(false);
 
   // Query database persistence and counts upon modal display
   useEffect(() => {
@@ -1313,6 +1314,118 @@ export default function SettingsModal({
                   </button>
                 </div>
               </div>
+
+              {/* Part 1.5: Master Password Bypass Switch ("TẮT/MỞ PASS") */}
+              <div className="p-5 border-2 border-amber-500/30 rounded-2xl bg-gradient-to-b from-amber-950/20 via-slate-900/40 to-slate-900/60 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${settings.bypassAllPasswords ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`}>
+                      {settings.bypassAllPasswords ? <Unlock className="w-5 h-5 text-emerald-400" /> : <Lock className="w-5 h-5 text-amber-400" />}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                        Công Tắc "TẮT/MỞ PASS" (Toàn Viện)
+                        {settings.bypassAllPasswords ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse">
+                            🟢 Đang Mở Pass Toàn Viện
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            🔒 Đang Khóa Theo Thẻ
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        {settings.bypassAllPasswords
+                          ? "Bệnh nhân có thể bấm vào mọi thẻ prompt để xem thẳng mà không cần nhập pass."
+                          : "Các thẻ có cài pass sẽ tiếp tục yêu cầu nhập đúng mật khẩu như bình thường."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-black/40 rounded-xl border border-amber-500/20 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                  <p className="font-semibold text-amber-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                    Đặc tính & Quyền lợi của Viện trưởng:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-400 pl-1">
+                    <li>Mở tự do toàn bộ các thẻ có khóa mà <strong>KHÔNG LÀM MẤT</strong> hay ghi đè mật khẩu riêng đã lưu trên từng thẻ.</li>
+                    <li>Không cần mất công mở tay hay xóa pass từng thẻ một mỗi khi muốn phát phúc lợi toàn viện.</li>
+                    <li>Khi tắt công tắc này, tất cả mật khẩu trước đó sẽ tự động được kích hoạt bảo vệ trở lại.</li>
+                  </ul>
+                </div>
+
+                <button
+                  type="button"
+                  id="btn-toggle-bypass-passwords"
+                  onClick={() => setShowBypassConfirmModal(true)}
+                  className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-lg hover:scale-[1.01] active:scale-[0.99] ${
+                    settings.bypassAllPasswords
+                      ? "bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-amber-100 border border-amber-400/40"
+                      : "bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-emerald-100 border border-emerald-400/40"
+                  }`}
+                >
+                  {settings.bypassAllPasswords ? (
+                    <>
+                      <Lock className="w-4 h-4" /> Khóa Lại Toàn Bộ Thẻ Có Pass
+                    </>
+                  ) : (
+                    <>
+                      <Unlock className="w-4 h-4" /> Mở Toàn Bộ Pass (Tắt Khóa Pass Toàn Viện)
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Safety Confirmation Modal for Bypass Passwords */}
+              {showBypassConfirmModal && (
+                <div className="fixed inset-0 z-[100002] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fade-in_0.2s_ease-out]">
+                  <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 max-w-[400px] w-full text-center shadow-2xl space-y-4 animate-[scale-in_0.2s_ease-out]">
+                    <div className="w-14 h-14 rounded-full bg-amber-950/60 border border-amber-500/30 flex items-center justify-center mx-auto text-2xl">
+                      {settings.bypassAllPasswords ? "🔒" : "🔓"}
+                    </div>
+                    
+                    <h3 className="font-cabinet text-base font-bold text-slate-100">
+                      {settings.bypassAllPasswords
+                        ? "Khôi phục chế độ khóa pass từng thẻ?"
+                        : "Xác nhận Mở Toàn Bộ Pass các thẻ?"}
+                    </h3>
+                    
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      {settings.bypassAllPasswords
+                        ? "Các thẻ có cài pass sẽ bắt đầu yêu cầu nhập mật khẩu trở lại. Mọi mật khẩu của từng thẻ vẫn được lưu trữ nguyên vẹn."
+                        : "Sau khi kích hoạt, mọi bệnh nhân có thể truy cập thẳng vào tất cả bệnh án mà không cần giải mã pass. Mật khẩu riêng trên từng thẻ không hề bị xóa."}
+                    </p>
+
+                    <div className="flex gap-2.5 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowBypassConfirmModal(false)}
+                        className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer border border-slate-700"
+                      >
+                        Hủy bỏ
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-confirm-bypass-passwords"
+                        onClick={() => {
+                          const nextStatus = !settings.bypassAllPasswords;
+                          onSaveSettings("bypassAllPasswords", nextStatus);
+                          setShowBypassConfirmModal(false);
+                        }}
+                        className={`flex-1 py-2.5 font-bold rounded-xl text-xs transition cursor-pointer shadow-md ${
+                          settings.bypassAllPasswords
+                            ? "bg-amber-600 hover:bg-amber-500 text-white"
+                            : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                        }`}
+                      >
+                        {settings.bypassAllPasswords ? "🔒 Khóa Trở Lại" : "🔓 Xác Nhận Mở"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Part 2: Site Lockdown / "Đóng Cửa" Section */}
               <div className="p-5 border-2 border-rose-500/30 rounded-2xl bg-gradient-to-b from-rose-950/20 via-slate-900/40 to-slate-900/60 space-y-4">

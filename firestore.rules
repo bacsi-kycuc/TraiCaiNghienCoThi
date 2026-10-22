@@ -105,6 +105,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Khoe Chong Feed Posts Collection
+    match /khoe_chong_posts/{postId} {
+      allow read, write: if true;
+    }
+
+    // Community Notifications Collection
+    match /user_notifications/{notifId} {
+      allow read, write: if true;
+    }
+
     // Connection Health Test
     match /test/{testId} {
       allow read, write: if true;

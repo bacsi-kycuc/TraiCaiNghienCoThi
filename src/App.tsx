@@ -20,6 +20,8 @@ import {
   Megaphone,
   BrainCircuit,
   Clock,
+  ChevronDown,
+  Heart,
 } from "lucide-react";
 
 // Firebase Firestore imports
@@ -82,9 +84,11 @@ import {
 interface AppNotification {
   id: string;
   message: string;
-  promptId: number;
+  promptId?: number;
   isRead: boolean;
   targetTab: 'main' | 'vip';
+  vipSubTab?: 'giveaway' | 'khoe-chong';
+  recipientUser?: string;
   date: string;
 }
 
@@ -129,6 +133,23 @@ export default function App() {
   const [showUserAccountModal, setShowUserAccountModal] = useState(false);
   const [showUserAuthModal, setShowUserAuthModal] = useState(false);
   const [viewingVipZone, setViewingVipZone] = useState(false);
+  const [vipZoneFloor, setVipZoneFloor] = useState<"giveaway" | "khoe-chong">("giveaway");
+  const [showVipDropdown, setShowVipDropdown] = useState(false);
+  const vipDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (vipDropdownRef.current && !vipDropdownRef.current.contains(event.target as Node)) {
+        setShowVipDropdown(false);
+      }
+    }
+    if (showVipDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showVipDropdown]);
   const [acknowledgedGiveaways, setAcknowledgedGiveaways] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem("acknowledged_giveaways");
@@ -627,6 +648,84 @@ export default function App() {
     
     return () => clearInterval(intervalId);
   }, []);
+
+  // Send notification for community interactions (likes, comments in Khoe Chong)
+  const handleSendCommunityNotification = async (notifData: {
+    recipientUser: string;
+    message: string;
+    targetTab: "vip";
+    vipSubTab: "khoe-chong";
+    date: string;
+  }) => {
+    const notifId = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const newNotif: AppNotification = {
+      id: notifId,
+      message: notifData.message,
+      targetTab: notifData.targetTab,
+      vipSubTab: notifData.vipSubTab,
+      recipientUser: notifData.recipientUser,
+      date: notifData.date,
+      isRead: false,
+    };
+
+    // If current user is recipient, update local state immediately
+    if (currentUser && currentUser.trim().toLowerCase() === notifData.recipientUser.trim().toLowerCase()) {
+      setUserNotifications((prev) => {
+        const updated = [newNotif, ...prev];
+        localStorage.setItem("user_notifications", JSON.stringify(updated));
+        return updated;
+      });
+    }
+
+    // Persist to Cloud Firestore collection "user_notifications"
+    try {
+      const notifDocRef = doc(db, "user_notifications", notifId);
+      await setDoc(notifDocRef, newNotif);
+    } catch (err) {
+      console.warn("Lỗi lưu thông báo vào Firestore:", err);
+    }
+  };
+
+  // Real-time listener for community notifications targeting current user
+  useEffect(() => {
+    if (!currentUser) return;
+    let unsubscribe = () => {};
+    try {
+      const q = collection(db, "user_notifications");
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const userLower = currentUser.trim().toLowerCase();
+          const incomingNotifs: AppNotification[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as AppNotification;
+            if (data.recipientUser && data.recipientUser.trim().toLowerCase() === userLower) {
+              incomingNotifs.push({
+                ...data,
+                id: docSnap.id,
+              });
+            }
+          });
+
+          if (incomingNotifs.length > 0) {
+            setUserNotifications((prev) => {
+              const existingIds = new Set(prev.map((n) => n.id));
+              const newItems = incomingNotifs.filter((n) => !existingIds.has(n.id));
+              if (newItems.length > 0) {
+                const combined = [...newItems, ...prev];
+                combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                localStorage.setItem("user_notifications", JSON.stringify(combined));
+                return combined;
+              }
+              return prev;
+            });
+          }
+        }
+      });
+    } catch (err) {
+      console.warn("Lỗi listener user_notifications:", err);
+    }
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // --- Notification Engine ---
   useEffect(() => {
@@ -2339,115 +2438,182 @@ export default function App() {
                         />
                       </button>
 
-                      {/* VIP Zone tab horizontally aligned next to Account button */}
-                      <button
-                        onClick={() => setViewingVipZone(!viewingVipZone)}
-                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold tracking-wider transition hover:scale-105 cursor-pointer active:scale-95 border uppercase font-comfortaa ${
-                          viewingVipZone
-                            ? "bg-purple-600 border-purple-400 text-white shadow"
-                            : "bg-amber-600 border-amber-500 text-amber-50 hover:bg-amber-500 hover:border-amber-400"
-                        }`}
-                      >
-                        <Award className="w-3.5 h-3.5 text-amber-300 shrink-0 animate-bounce" />
-                        <span>Khu VIP</span>
-                      </button>
+                      {/* VIP Zone Dropdown next to Account button */}
+                      <div className="relative" ref={vipDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowVipDropdown(!showVipDropdown)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-extrabold tracking-wider transition hover:scale-105 cursor-pointer active:scale-95 border uppercase font-comfortaa ${
+                            viewingVipZone
+                              ? "bg-purple-600 border-purple-400 text-white shadow"
+                              : "bg-amber-600 border-amber-500 text-amber-50 hover:bg-amber-500 hover:border-amber-400"
+                          }`}
+                          title="Khu VIP: Săn Slot VIP & Khoe Chồng"
+                        >
+                          <Award className="w-3.5 h-3.5 text-amber-300 shrink-0 animate-bounce" />
+                          <span>Khu VIP</span>
+                          <ChevronDown className={`w-3 h-3 text-amber-200 transition-transform duration-200 ${showVipDropdown ? "rotate-180" : ""}`} />
+                        </button>
+
+                        <AnimatePresence>
+                          {showVipDropdown && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute right-0 mt-2 w-48 bg-[#1f1422]/95 border-2 border-[#D2B4C8]/35 rounded-2xl shadow-2xl p-1.5 z-[99999] backdrop-blur-xl space-y-1 select-none"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setVipZoneFloor("giveaway");
+                                  setViewingVipZone(true);
+                                  setShowVipDropdown(false);
+                                }}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                                  viewingVipZone && vipZoneFloor === "giveaway"
+                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/35 font-black"
+                                    : "text-slate-200 hover:bg-white/10 hover:text-white"
+                                }`}
+                              >
+                                <Award className="w-4 h-4 text-amber-400 shrink-0" />
+                                <span>Săn Slot VIP</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setVipZoneFloor("khoe-chong");
+                                  setViewingVipZone(true);
+                                  setShowVipDropdown(false);
+                                }}
+                                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                                  viewingVipZone && vipZoneFloor === "khoe-chong"
+                                    ? "bg-pink-500/20 text-pink-300 border border-pink-500/35 font-black"
+                                    : "text-slate-200 hover:bg-white/10 hover:text-white"
+                                }`}
+                              >
+                                <Heart className="w-4 h-4 text-pink-400 fill-pink-400/40 shrink-0" />
+                                <span>Khoe Chồng</span>
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                       
                       {/* Notifications Bell */}
                       <div className="relative">
-                        <button
-                          onClick={() => {
-                            setShowNotificationsDropdown(!showNotificationsDropdown);
-                            setShowAdminNotifications(false);
-                          }}
-                          className="p-1 rounded-full hover:bg-white/5 transition relative cursor-pointer flex items-center"
-                        >
-                          <Bell className="w-4 h-4 text-purple-350 hover:text-purple-200" />
-                          {userNotifications.filter(n => !n.isRead).length > 0 && (
+                        {(() => {
+                          const relevantNotifs = userNotifications.filter(n => {
+                            if (n.recipientUser && (!currentUser || n.recipientUser.trim().toLowerCase() !== currentUser.trim().toLowerCase())) {
+                              return false;
+                            }
+                            return true;
+                          });
+                          const unreadCount = relevantNotifs.filter(n => !n.isRead).length;
+
+                          return (
                             <>
-                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
-                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full" />
-                            </>
-                          )}
-                        </button>
-
-                        {/* Notifications Dropdown */}
-                        <AnimatePresence>
-                          {showNotificationsDropdown && (
-                            <div className="absolute right-0 mt-3 w-72 bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl p-3 z-[99999] text-slate-100 space-y-2">
-                              <div className="flex justify-between items-center pb-2 border-b border-purple-500/20 text-[10px] font-extrabold text-purple-400 uppercase tracking-wider">
-                                <span>🔔 Thông báo ({userNotifications.filter(n => !n.isRead).length})</span>
-                                {userNotifications.length > 0 && (
-                                  <button
-                                    onClick={() => {
-                                      setUserNotifications([]);
-                                      localStorage.removeItem("user_notifications");
-                                    }}
-                                    className="text-[9px] text-slate-400 hover:text-purple-300 transition cursor-pointer"
-                                  >
-                                    Xóa tất cả
-                                  </button>
+                              <button
+                                onClick={() => {
+                                  setShowNotificationsDropdown(!showNotificationsDropdown);
+                                  setShowAdminNotifications(false);
+                                }}
+                                className="p-1 rounded-full hover:bg-white/5 transition relative cursor-pointer flex items-center"
+                              >
+                                <Bell className="w-4 h-4 text-purple-350 hover:text-purple-200" />
+                                {unreadCount > 0 && (
+                                  <>
+                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full" />
+                                  </>
                                 )}
-                              </div>
-                              <div className="max-h-60 overflow-y-auto space-y-3 custom-scrollbar">
-                                {userNotifications.length === 0 ? (
-                                  <p className="text-[10px] text-slate-500 text-center py-4 italic font-medium">
-                                    Không có thông báo mới nào
-                                  </p>
-                                ) : (
-                                  (() => {
-                                    const grouped: Record<string, typeof userNotifications> = {
-                                      "Hôm nay": [],
-                                      "Hôm qua": [],
-                                      "Cũ hơn": []
-                                    };
-                                    
-                                    const now = new Date();
-                                    const todayStr = now.toLocaleDateString();
-                                    const yesterday = new Date(now);
-                                    yesterday.setDate(now.getDate() - 1);
-                                    const yesterdayStr = yesterday.toLocaleDateString();
+                              </button>
 
-                                    userNotifications.forEach(n => {
-                                      const d = new Date(n.date).toLocaleDateString();
-                                      if (d === todayStr) grouped["Hôm nay"].push(n);
-                                      else if (d === yesterdayStr) grouped["Hôm qua"].push(n);
-                                      else grouped["Cũ hơn"].push(n);
-                                    });
+                              {/* Notifications Dropdown */}
+                              <AnimatePresence>
+                                {showNotificationsDropdown && (
+                                  <div className="absolute right-0 mt-3 w-72 bg-slate-900 border border-purple-500/30 rounded-2xl shadow-2xl p-3 z-[99999] text-slate-100 space-y-2">
+                                    <div className="flex justify-between items-center pb-2 border-b border-purple-500/20 text-[10px] font-extrabold text-purple-400 uppercase tracking-wider">
+                                      <span>🔔 Thông báo ({unreadCount})</span>
+                                      {relevantNotifs.length > 0 && (
+                                        <button
+                                          onClick={() => {
+                                            setUserNotifications([]);
+                                            localStorage.removeItem("user_notifications");
+                                          }}
+                                          className="text-[9px] text-slate-400 hover:text-purple-300 transition cursor-pointer"
+                                        >
+                                          Xóa tất cả
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="max-h-60 overflow-y-auto space-y-3 custom-scrollbar">
+                                      {relevantNotifs.length === 0 ? (
+                                        <p className="text-[10px] text-slate-500 text-center py-4 italic font-medium">
+                                          Không có thông báo mới nào
+                                        </p>
+                                      ) : (
+                                        (() => {
+                                          const grouped: Record<string, typeof userNotifications> = {
+                                            "Hôm nay": [],
+                                            "Hôm qua": [],
+                                            "Cũ hơn": []
+                                          };
+                                          
+                                          const now = new Date();
+                                          const todayStr = now.toLocaleDateString();
+                                          const yesterday = new Date(now);
+                                          yesterday.setDate(now.getDate() - 1);
+                                          const yesterdayStr = yesterday.toLocaleDateString();
 
-                                    return Object.entries(grouped).map(([label, items]) => {
-                                      if (items.length === 0) return null;
-                                      return (
-                                        <div key={label} className="space-y-1.5">
-                                          <div className="px-2 py-0.5 text-[8px] font-bold text-slate-500 uppercase tracking-widest bg-white/5 rounded-md inline-block">
-                                            {label}
-                                          </div>
-                                          {items.map((notif) => (
-                                            <div
-                                              key={notif.id}
-                                              onClick={() => {
-                                                // Mark as read and sync storage
-                                                if (!notif.isRead) {
-                                                  const updated = userNotifications.map(n => n.id === notif.id ? { ...n, isRead: true } : n);
-                                                  setUserNotifications(updated);
-                                                  localStorage.setItem("user_notifications", JSON.stringify(updated));
-                                                }
+                                          relevantNotifs.forEach(n => {
+                                            const d = new Date(n.date).toLocaleDateString();
+                                            if (d === todayStr) grouped["Hôm nay"].push(n);
+                                            else if (d === yesterdayStr) grouped["Hôm qua"].push(n);
+                                            else grouped["Cũ hơn"].push(n);
+                                          });
 
-                                                // Navigation logic
-                                                if (notif.targetTab === 'vip') {
-                                                  setViewingVipZone(true);
-                                                } else {
-                                                  setViewingVipZone(false);
-                                                  
-                                                  // Find which zone this prompt belongs to and switch
-                                                  if (notif.promptId) {
-                                                    const inHospital = promptsHospital.some(p => p.id === notif.promptId);
-                                                    if (inHospital) setCurrentZone("BỆNH VIỆN TRUNG ƯƠNG");
-                                                    else setCurrentZone("TRẠI CAI NGHIỆN");
-                                                  }
-                                                }
-                                                
-                                                // Hide dropdown
-                                                setShowNotificationsDropdown(false);
+                                          return Object.entries(grouped).map(([label, items]) => {
+                                            if (items.length === 0) return null;
+                                            return (
+                                              <div key={label} className="space-y-1.5">
+                                                <div className="px-2 py-0.5 text-[8px] font-bold text-slate-500 uppercase tracking-widest bg-white/5 rounded-md inline-block">
+                                                  {label}
+                                                </div>
+                                                {items.map((notif) => (
+                                                  <div
+                                                    key={notif.id}
+                                                    onClick={() => {
+                                                      // Mark as read and sync storage
+                                                      if (!notif.isRead) {
+                                                        const updated = userNotifications.map(n => n.id === notif.id ? { ...n, isRead: true } : n);
+                                                        setUserNotifications(updated);
+                                                        localStorage.setItem("user_notifications", JSON.stringify(updated));
+                                                      }
+
+                                                      // Navigation logic
+                                                      if (notif.targetTab === 'vip') {
+                                                        setViewingVipZone(true);
+                                                        if (notif.vipSubTab === 'khoe-chong') {
+                                                          setVipZoneFloor('khoe-chong');
+                                                        } else {
+                                                          setVipZoneFloor('giveaway');
+                                                        }
+                                                      } else {
+                                                        setViewingVipZone(false);
+                                                        
+                                                        // Find which zone this prompt belongs to and switch
+                                                        if (notif.promptId) {
+                                                          const inHospital = promptsHospital.some(p => p.id === notif.promptId);
+                                                          if (inHospital) setCurrentZone("BỆNH VIỆN TRUNG ƯƠNG");
+                                                          else setCurrentZone("TRẠI CAI NGHIỆN");
+                                                        }
+                                                      }
+                                                      
+                                                      // Hide dropdown
+                                                      setShowNotificationsDropdown(false);
 
                                                 // Scroll to prompt logic
                                                 if (notif.promptId) {
@@ -2486,8 +2652,11 @@ export default function App() {
                               </div>
                             </div>
                           )}
-                        </AnimatePresence>
-                      </div>
+                          </AnimatePresence>
+                        </>
+                      );
+                    })()}
+                  </div>
 
                       {/* Log out user button */}
                       <button
@@ -2734,6 +2903,9 @@ export default function App() {
                       onBack={() => setViewingVipZone(false)}
                       isOfflineMode={isOfflineMode}
                       setToastMessage={setToastMessage}
+                      initialFloor={vipZoneFloor}
+                      onOpenAuthModal={() => setShowUserAuthModal(true)}
+                      onNotifyAuthor={handleSendCommunityNotification}
                       onUpdatePrompts={(updated) => {
                         setPromptsHospital(updated.filter((p) => p.zone === "hospital"));
                         setPromptsCaiNghien(updated.filter((p) => p.zone === "cai-nghien"));
@@ -2962,6 +3134,7 @@ export default function App() {
                             prompt={p}
                             isAdmin={isAdmin}
                             currentUser={currentUser}
+                            bypassAllPasswords={settings.bypassAllPasswords || false}
                             onOpenAuth={() => setShowUserAuthModal(true)}
                             index={i}
                             onEdit={(prompt) => {

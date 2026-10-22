@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Award, Clock, Users, CheckCircle, Lock, Unlock, ArrowLeft, RotateCcw, AlertCircle, Bell, Trash2, Edit } from "lucide-react";
+import { Award, Clock, Users, CheckCircle, Lock, Unlock, ArrowLeft, RotateCcw, AlertCircle, Bell, Trash2, Edit, Heart } from "lucide-react";
 import { Prompt } from "../types";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import KhoeChongFeed from "./KhoeChongFeed";
 
 const vipBannerBg = "https://i.postimg.cc/8z9d585n/2500979f50b9812fe9979636c1e155bd.jpg";
 
@@ -15,6 +16,15 @@ interface VipZoneViewProps {
   isOfflineMode: boolean;
   setToastMessage: (msg: string) => void;
   onUpdatePrompts?: (updatedPrompts: Prompt[]) => void;
+  initialFloor?: "giveaway" | "khoe-chong";
+  onNotifyAuthor?: (notif: {
+    recipientUser: string;
+    message: string;
+    targetTab: "vip";
+    vipSubTab: "khoe-chong";
+    date: string;
+  }) => void;
+  onOpenAuthModal?: () => void;
 }
 
 export default function VipZoneView({
@@ -25,8 +35,18 @@ export default function VipZoneView({
   isOfflineMode,
   setToastMessage,
   onUpdatePrompts,
+  initialFloor = "giveaway",
+  onNotifyAuthor,
+  onOpenAuthModal,
 }: VipZoneViewProps) {
+  const [activeFloor, setActiveFloor] = useState<"giveaway" | "khoe-chong">(initialFloor);
   const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (initialFloor) {
+      setActiveFloor(initialFloor);
+    }
+  }, [initialFloor]);
   const [selectedPromptToEdit, setSelectedPromptToEdit] = useState<Prompt | null>(null);
   const [showEditConfirmModal, setShowEditConfirmModal] = useState(false);
   const [showSecondDeleteConfirm, setShowSecondDeleteConfirm] = useState(false);
@@ -275,26 +295,45 @@ export default function VipZoneView({
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs bg-[#2E212B]/90 border border-[#D2B4C8]/30 text-[#ECE3ED] px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1">
-            ✨ VIP Floor
+          <span className="text-xs bg-[#2E212B]/90 border border-[#D2B4C8]/30 text-[#ECE3ED] px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shadow-md">
+            {activeFloor === "khoe-chong" ? (
+              <>
+                <Heart className="w-3.5 h-3.5 text-pink-400 fill-pink-400" />
+                <span>Khoe Chồng</span>
+              </>
+            ) : (
+              <>
+                <Award className="w-3.5 h-3.5 text-amber-300" />
+                <span>Săn Slot VIP</span>
+              </>
+            )}
           </span>
         </div>
       </div>
 
-      <div className="max-w-[750px] w-full mx-auto space-y-6">
-        {/* Intro banner */}
-        <div 
-          className="relative overflow-hidden p-6 md:p-8 border-2 border-[#D2B4C8]/40 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.6)] text-center select-none bg-cover bg-center"
-          style={{ backgroundImage: `url(${vipBannerBg})` }}
-        >
+      {activeFloor === "khoe-chong" ? (
+        <div className="max-w-[750px] w-full mx-auto">
+          <KhoeChongFeed
+            prompts={prompts}
+            currentUser={currentUser}
+            isAdmin={isAdmin}
+            setToastMessage={setToastMessage}
+            onOpenAuthModal={onOpenAuthModal}
+            onNotifyAuthor={onNotifyAuthor}
+          />
+        </div>
+      ) : (
+        <div className="max-w-[750px] w-full mx-auto space-y-6">
+          {/* Intro banner */}
+          <div 
+            className="relative overflow-hidden p-6 md:p-8 border-2 border-[#D2B4C8]/40 rounded-3xl shadow-[0_16px_40px_rgba(0,0,0,0.6)] text-center select-none bg-cover bg-center"
+            style={{ backgroundImage: `url(${vipBannerBg})` }}
+          >
           {/* Subtle dimming overlay so the banner image displays clearly and sharply */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/60 pointer-events-none" />
           <div className="absolute inset-0 bg-purple-950/20 mix-blend-color-burn pointer-events-none" />
           
           <div className="relative z-10">
-            <span className="text-5xl md:text-6xl filter drop-shadow-[0_6px_16px_rgba(0,0,0,0.95)] animate-pulse inline-block mb-2">
-              🏆
-            </span>
             <h1
               style={{ 
                 fontFamily: '"Cormorant Garamond", serif',
@@ -600,6 +639,7 @@ export default function VipZoneView({
           </div>
         )}
       </div>
+      )}
 
       {/* Custom Edit/Manage Giveaway Dialog */}
       <AnimatePresence>

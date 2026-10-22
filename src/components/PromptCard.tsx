@@ -22,6 +22,7 @@ interface PromptCardProps {
   onLock?: (promptId: string) => void;
   currentUser?: string;
   onOpenAuth?: () => void;
+  bypassAllPasswords?: boolean;
 }
 
 export default function PromptCard({
@@ -41,6 +42,7 @@ export default function PromptCard({
   onLock,
   currentUser,
   onOpenAuth,
+  bypassAllPasswords = false,
 }: PromptCardProps) {
   const [passwordInput, setPasswordInput] = useState("");
   const [showCardPassword, setShowCardPassword] = useState(false);
@@ -63,7 +65,7 @@ export default function PromptCard({
     }
   }
 
-  const hasPassword = !!prompt.password;
+  const hasPassword = bypassAllPasswords ? false : !!prompt.password;
 
   // Helper to calculate days diff for "newly created" status
   const getDaysDiff = (dateStr?: string) => {
@@ -551,6 +553,15 @@ export default function PromptCard({
                 ) : (
                   <Lock className="w-4 h-4" />
                 )}
+              </span>
+            )}
+            {bypassAllPasswords && !!prompt.password && (
+              <span
+                className="text-emerald-400 ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30"
+                title="Mật khẩu đang được mở tự do bởi Viện trưởng"
+              >
+                <Unlock className="w-3 h-3 text-emerald-400" />
+                <span>Mở pass</span>
               </span>
             )}
           </h3>

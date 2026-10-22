@@ -88,4 +88,28 @@ export interface Settings {
 
   // Site Lockdown / Close Door Setting
   isSiteClosed?: boolean;
+
+  // Master switch to bypass / unlock all prompt passwords
+  bypassAllPasswords?: boolean;
+}
+
+export interface KhoeChongComment {
+  id: string;
+  author: string; // username
+  authorDisplayName?: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface KhoeChongPost {
+  id: string;
+  author: string; // username
+  authorDisplayName?: string;
+  husbandName?: string;
+  husbandPromptId?: number;
+  content: string; // max 700 words
+  imageUrl?: string;
+  likes: string[]; // usernames of those who liked
+  comments: KhoeChongComment[];
+  createdAt: string;
 }
