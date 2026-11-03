@@ -19,9 +19,11 @@ interface VipZoneViewProps {
   initialFloor?: "giveaway" | "khoe-chong";
   onNotifyAuthor?: (notif: {
     recipientUser: string;
+    recipientRole?: 'admin' | 'user';
     message: string;
     targetTab: "vip";
     vipSubTab: "khoe-chong";
+    postId?: string;
     date: string;
   }) => void;
   onOpenAuthModal?: () => void;

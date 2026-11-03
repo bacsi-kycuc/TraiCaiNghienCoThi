@@ -85,10 +85,12 @@ interface AppNotification {
   id: string;
   message: string;
   promptId?: number;
+  postId?: string;
   isRead: boolean;
   targetTab: 'main' | 'vip';
   vipSubTab?: 'giveaway' | 'khoe-chong';
   recipientUser?: string;
+  recipientRole?: 'admin' | 'user';
   date: string;
 }
 
@@ -649,12 +651,14 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, []);
 
-  // Send notification for community interactions (likes, comments in Khoe Chong)
+  // Send notification for community interactions (likes, comments, new posts in Khoe Chong)
   const handleSendCommunityNotification = async (notifData: {
     recipientUser: string;
+    recipientRole?: 'admin' | 'user';
     message: string;
     targetTab: "vip";
     vipSubTab: "khoe-chong";
+    postId?: string;
     date: string;
   }) => {
     const notifId = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -664,12 +668,19 @@ export default function App() {
       targetTab: notifData.targetTab,
       vipSubTab: notifData.vipSubTab,
       recipientUser: notifData.recipientUser,
+      recipientRole: notifData.recipientRole,
+      postId: notifData.postId,
       date: notifData.date,
       isRead: false,
     };
 
-    // If current user is recipient, update local state immediately
-    if (currentUser && currentUser.trim().toLowerCase() === notifData.recipientUser.trim().toLowerCase()) {
+    // If current session is admin or recipient, update local state immediately
+    const userLower = currentUser ? currentUser.trim().toLowerCase() : "";
+    const isCurrentAdmin = isAdmin || userLower === "admin" || userLower === "charmainennie8";
+    const isForAdmin = notifData.recipientRole === "admin" || notifData.recipientUser.toLowerCase() === "admin";
+    const isTargetingCurrent = (isForAdmin && isCurrentAdmin) || (currentUser && userLower === notifData.recipientUser.trim().toLowerCase());
+
+    if (isTargetingCurrent) {
       setUserNotifications((prev) => {
         const updated = [newNotif, ...prev];
         localStorage.setItem("user_notifications", JSON.stringify(updated));
@@ -686,19 +697,28 @@ export default function App() {
     }
   };
 
-  // Real-time listener for community notifications targeting current user
+  // Real-time listener for community notifications targeting current user or Admin
   useEffect(() => {
-    if (!currentUser) return;
     let unsubscribe = () => {};
     try {
       const q = collection(db, "user_notifications");
       unsubscribe = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
-          const userLower = currentUser.trim().toLowerCase();
+          const userLower = currentUser ? currentUser.trim().toLowerCase() : "";
+          const isUserAdmin = isAdmin || userLower === "admin" || userLower === "charmainennie8";
           const incomingNotifs: AppNotification[] = [];
+
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as AppNotification;
-            if (data.recipientUser && data.recipientUser.trim().toLowerCase() === userLower) {
+            const notifRecipientLower = (data.recipientUser || "").trim().toLowerCase();
+            const isForAdmin = data.recipientRole === "admin" || notifRecipientLower === "admin" || notifRecipientLower === "charmainennie8";
+
+            if (isUserAdmin && isForAdmin) {
+              incomingNotifs.push({
+                ...data,
+                id: docSnap.id,
+              });
+            } else if (currentUser && notifRecipientLower === userLower) {
               incomingNotifs.push({
                 ...data,
                 id: docSnap.id,
@@ -725,7 +745,7 @@ export default function App() {
       console.warn("Lỗi listener user_notifications:", err);
     }
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, isAdmin]);
 
   // --- Notification Engine ---
   useEffect(() => {
@@ -1026,11 +1046,14 @@ export default function App() {
 
     // A session is valid if localStorage says so and is within the 10-hour limit.
     // We combine sessionStorage to track the active tab session and prevent state loss on reload.
-    const currentLoggedUser = localStorage.getItem("user_logged_username") || null;
-    if (adminLogged && isWithinTimeLimit && currentLoggedUser === "Admin") {
+    if (adminLogged && isWithinTimeLimit) {
       setIsAdmin(true);
       // Sync into sessionStorage to uphold the reload-resiliant active session state
       sessionStorage.setItem("adminLoggedSession", "true");
+      if (!localStorage.getItem("user_logged_username")) {
+        setCurrentUser("Admin");
+        localStorage.setItem("user_logged_username", "Admin");
+      }
     } else {
       setIsAdmin(false);
       localStorage.removeItem("adminLogged");
@@ -1433,6 +1456,10 @@ export default function App() {
         localStorage.setItem("adminId", idInput);
         localStorage.setItem("adminLoginTime", Date.now().toString());
         sessionStorage.setItem("adminLoggedSession", "true");
+        if (!localStorage.getItem("user_logged_username")) {
+          setCurrentUser("Admin");
+          localStorage.setItem("user_logged_username", "Admin");
+        }
 
         setShowLoginModal(false);
         setAdminId("");
@@ -2505,8 +2532,17 @@ export default function App() {
                       {/* Notifications Bell */}
                       <div className="relative">
                         {(() => {
+                          const userLower = currentUser ? currentUser.trim().toLowerCase() : "";
+                          const isCurrentAdmin = isAdmin || userLower === "admin" || userLower === "charmainennie8";
+
                           const relevantNotifs = userNotifications.filter(n => {
-                            if (n.recipientUser && (!currentUser || n.recipientUser.trim().toLowerCase() !== currentUser.trim().toLowerCase())) {
+                            const notifRecipientLower = (n.recipientUser || "").trim().toLowerCase();
+                            const isForAdmin = n.recipientRole === "admin" || notifRecipientLower === "admin" || notifRecipientLower === "charmainennie8";
+
+                            if (isForAdmin) {
+                              return isCurrentAdmin;
+                            }
+                            if (n.recipientUser && (!currentUser || notifRecipientLower !== userLower)) {
                               return false;
                             }
                             return true;
@@ -2615,21 +2651,34 @@ export default function App() {
                                                       // Hide dropdown
                                                       setShowNotificationsDropdown(false);
 
-                                                // Scroll to prompt logic
-                                                if (notif.promptId) {
-                                                  setTimeout(() => {
-                                                    const element = document.getElementById(`prompt-${notif.promptId}`);
-                                                    if (element) {
-                                                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                      // Add a brief highlight effect
-                                                      element.classList.add('ring-4', 'ring-purple-500', 'ring-opacity-50', 'z-50');
-                                                      setTimeout(() => {
-                                                        element.classList.remove('ring-4', 'ring-purple-500', 'ring-opacity-50', 'z-50');
-                                                      }, 3000);
-                                                    }
-                                                  }, 400); // Wait for tab/zone switch animation
-                                                }
-                                              }}
+                                                      // Scroll to prompt logic
+                                                      if (notif.promptId) {
+                                                        setTimeout(() => {
+                                                          const element = document.getElementById(`prompt-${notif.promptId}`);
+                                                          if (element) {
+                                                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            element.classList.add('ring-4', 'ring-purple-500', 'ring-opacity-50', 'z-50');
+                                                            setTimeout(() => {
+                                                              element.classList.remove('ring-4', 'ring-purple-500', 'ring-opacity-50', 'z-50');
+                                                            }, 3000);
+                                                          }
+                                                        }, 400);
+                                                      }
+
+                                                      // Scroll to Khoe Chong post logic
+                                                      if (notif.postId) {
+                                                        setTimeout(() => {
+                                                          const element = document.getElementById(`khoe-chong-post-${notif.postId}`);
+                                                          if (element) {
+                                                            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            element.classList.add('ring-4', 'ring-pink-500', 'ring-opacity-60', 'z-50');
+                                                            setTimeout(() => {
+                                                              element.classList.remove('ring-4', 'ring-pink-500', 'ring-opacity-60', 'z-50');
+                                                            }, 3000);
+                                                          }
+                                                        }, 450);
+                                                      }
+                                                    }}
                                               className={`p-2 border rounded-xl text-[10px] leading-snug font-semibold cursor-pointer transition text-left ${notif.isRead ? "bg-transparent border-transparent text-slate-400 hover:bg-white/5" : "bg-black/40 hover:bg-purple-950/30 border-purple-500/10 hover:border-purple-500/25 text-slate-200"}`}
                                             >
                                               {notif.message}

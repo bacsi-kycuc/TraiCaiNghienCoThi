@@ -42,9 +42,11 @@ interface KhoeChongFeedProps {
   onOpenAuthModal?: () => void;
   onNotifyAuthor?: (notif: {
     recipientUser: string;
+    recipientRole?: 'admin' | 'user';
     message: string;
     targetTab: "vip";
     vipSubTab: "khoe-chong";
+    postId?: string;
     date: string;
   }) => void;
 }
@@ -429,6 +431,23 @@ export default function KhoeChongFeed({
       // Trigger celebration confetti
       window.dispatchEvent(new CustomEvent("celebrate-confetti"));
       setToastMessage("🎉 Đăng bài thành công rực rỡ!");
+
+      // Send notification to Admin (Viện Trưởng) about new post
+      if (onNotifyAuthor) {
+        const userLower = currentUser ? currentUser.toLowerCase() : "";
+        const isPosterAdmin = isAdmin || userLower === "admin" || userLower === "charmainennie8";
+        if (!isPosterAdmin) {
+          onNotifyAuthor({
+            recipientUser: "Admin",
+            recipientRole: "admin",
+            message: `📝 [${currentUser}] vừa đăng bài mới khoe chồng "${husbandName.trim() || 'của bé'}"!`,
+            targetTab: "vip",
+            vipSubTab: "khoe-chong",
+            postId: newPostId,
+            date: new Date().toISOString(),
+          });
+        }
+      }
     } catch (err) {
       console.error("Lỗi đăng bài:", err);
       setToastMessage("❌ Đã có lỗi xảy ra khi đăng bài.");
@@ -552,6 +571,25 @@ export default function KhoeChongFeed({
           message: `💬 [${currentUser}] đã bình luận vào bài khoe chồng của bạn: "${snippet}"`,
           targetTab: "vip",
           vipSubTab: "khoe-chong",
+          postId: post.id,
+          date: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Also send notification to Admin (Viện Trưởng) about this new feedback / comment
+    if (onNotifyAuthor) {
+      const userLower = currentUser ? currentUser.toLowerCase() : "";
+      const isCommenterAdmin = isAdmin || userLower === "admin" || userLower === "charmainennie8";
+      if (!isCommenterAdmin) {
+        const snippet = inputVal.length > 35 ? `${inputVal.slice(0, 35)}...` : inputVal;
+        onNotifyAuthor({
+          recipientUser: "Admin",
+          recipientRole: "admin",
+          message: `💬 [${currentUser}] đã gửi phản hồi vào bài khoe chồng "${post.husbandName || 'của bé'}": "${snippet}"`,
+          targetTab: "vip",
+          vipSubTab: "khoe-chong",
+          postId: post.id,
           date: new Date().toISOString(),
         });
       }
@@ -1083,6 +1121,7 @@ export default function KhoeChongFeed({
             return (
               <motion.div
                 key={post.id}
+                id={`khoe-chong-post-${post.id}`}
                 layout
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
