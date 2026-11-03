@@ -49,7 +49,8 @@ import MusicPlayer from "./components/MusicPlayer";
 import Toast from "./components/Toast";
 import RandomRollBanner from "./components/RandomRollBanner";
 import ConfettiCelebration from "./components/ConfettiCelebration";
-import FavoriteLeaderBanner from "./components/FavoriteLeaderBanner";
+import FavoriteLeaderBanner, { ChampionRecord } from "./components/FavoriteLeaderBanner";
+import { getWeekDetails, WeekDetails } from "./utils/weekUtils";
 import TrollPopup from "./components/TrollPopup";
 import UserAuthModal from "./components/UserAuthModal";
 import VipZoneView from "./components/VipZoneView";
@@ -206,6 +207,38 @@ export default function App() {
     return {};
   });
 
+  // --- Weekly Voting Mechanism (Monday to Sunday) ---
+  const [currentWeek, setCurrentWeek] = useState<WeekDetails>(() => getWeekDetails());
+  const [weeklyVotesData, setWeeklyVotesData] = useState<Record<string, number>>(() => {
+    try {
+      const initialWk = getWeekDetails();
+      const saved = localStorage.getItem(`weekly_votes_${initialWk.weekId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  });
+  const [prevWeekChampion, setPrevWeekChampion] = useState<ChampionRecord | null>(null);
+
+  // Auto-detect week shift when crossing Monday 00:00:00
+  useEffect(() => {
+    const checkWeekShift = () => {
+      const freshWeek = getWeekDetails();
+      if (freshWeek.weekId !== currentWeek.weekId) {
+        console.log(`[Weekly Vote] Chuyển đổi sang tuần mới: ${freshWeek.weekId}`);
+        setCurrentWeek(freshWeek);
+        try {
+          const saved = localStorage.getItem(`weekly_votes_${freshWeek.weekId}`);
+          setWeeklyVotesData(saved ? JSON.parse(saved) : {});
+        } catch {
+          setWeeklyVotesData({});
+        }
+      }
+    };
+
+    const interval = setInterval(checkWeekShift, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [currentWeek.weekId]);
+
   const handleVote = async (characterId: string) => {
     if (!currentUser) {
       setToastMessage("🔒 Tính năng bình chọn chỉ dành cho tài khoản đã tạo trên web! Hãy đăng nhập/tạo tài khoản nhé.");
@@ -236,7 +269,17 @@ export default function App() {
       return;
     }
 
-    // Vote is allowed, update global state, local storage and IndexedDB
+    // 1. Update Weekly Votes State and Storage
+    setWeeklyVotesData((prev) => {
+      const updated = {
+        ...prev,
+        [characterId]: (prev[characterId] || 0) + 1,
+      };
+      localStorage.setItem(`weekly_votes_${currentWeek.weekId}`, JSON.stringify(updated));
+      return updated;
+    });
+
+    // 2. Update All-Time Votes State and Storage
     setVotesData((prev) => {
       const updated = {
         ...prev,
@@ -251,12 +294,32 @@ export default function App() {
     localStorage.setItem(userVotedDatesKey, JSON.stringify(votedDates));
     localStorage.setItem("char_voted_dates", JSON.stringify(votedDates));
 
-    setToastMessage(`🎉 Đã bình chọn thành công cho "${name}"!`);
+    setToastMessage(`🎉 Đã thả tim thành công cho "${name}" (+1 điểm tuần này)!`);
 
     // Trigger confetti pháo hoa rực rỡ dồi dào chúc mừng!
     window.dispatchEvent(new CustomEvent("celebrate-confetti"));
 
-    // Persist real vote count in Firestore cloud DB with atomic increment
+    // 3. Persist to Cloud Firestore:
+    // a. Real-time Weekly Votes document
+    try {
+      const weeklyDocRef = doc(db, "weekly_votes", currentWeek.weekId);
+      await setDoc(
+        weeklyDocRef,
+        {
+          weekId: currentWeek.weekId,
+          weekLabel: currentWeek.weekLabel,
+          votes: {
+            [characterId]: increment(1),
+          },
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (weeklyErr) {
+      console.warn("Lỗi lưu lượt vote tuần lên Firestore:", weeklyErr);
+    }
+
+    // b. Real-time All-Time Votes document
     try {
       const voteDocRef = doc(db, "votes", characterId);
       await setDoc(voteDocRef, { count: increment(1), lastVotedAt: new Date().toISOString() }, { merge: true });
@@ -1320,6 +1383,79 @@ export default function App() {
     };
   }, []);
 
+  // --- Real-time synchronization for Weekly Votes & Previous Week Champion ---
+  useEffect(() => {
+    let unsubWeekly = () => {};
+    let unsubPrevWeekly = () => {};
+
+    try {
+      // 1. Current week votes listener
+      const weeklyDocRef = doc(db, "weekly_votes", currentWeek.weekId);
+      unsubWeekly = onSnapshot(
+        weeklyDocRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data && data.votes && typeof data.votes === "object") {
+              setWeeklyVotesData((prev) => {
+                const merged = { ...prev, ...data.votes };
+                localStorage.setItem(`weekly_votes_${currentWeek.weekId}`, JSON.stringify(merged));
+                return merged;
+              });
+            }
+          }
+        },
+        (err) => {
+          console.warn("Lỗi đăng ký theo dõi Weekly Votes từ Firestore: ", err);
+        }
+      );
+
+      // 2. Previous week champion listener
+      const prevWeeklyDocRef = doc(db, "weekly_votes", currentWeek.prevWeekId);
+      unsubPrevWeekly = onSnapshot(
+        prevWeeklyDocRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data && data.votes && typeof data.votes === "object") {
+              const allPrompts = [...promptsHospital, ...promptsCaiNghien];
+              let bestId = "";
+              let bestVotes = 0;
+              for (const [charId, val] of Object.entries(data.votes)) {
+                const count = typeof val === "number" ? val : 0;
+                if (count > bestVotes) {
+                  bestVotes = count;
+                  bestId = charId;
+                }
+              }
+              if (bestId && bestVotes > 0) {
+                const char = allPrompts.find((p) => p.id.toString() === bestId);
+                setPrevWeekChampion({
+                  promptId: bestId,
+                  title: char ? char.title : (data.championTitle || "Điều Dưỡng"),
+                  votes: bestVotes,
+                  genre: char?.genre,
+                  icon: char?.icon,
+                  weekLabel: data.weekLabel || currentWeek.prevWeekLabel,
+                });
+              }
+            }
+          }
+        },
+        (err) => {
+          console.warn("Lỗi đăng ký theo dõi Prev Weekly Votes từ Firestore: ", err);
+        }
+      );
+    } catch (err) {
+      console.warn("Lỗi thiết lập listeners weekly_votes:", err);
+    }
+
+    return () => {
+      unsubWeekly();
+      unsubPrevWeekly();
+    };
+  }, [currentWeek.weekId, currentWeek.prevWeekId, promptsHospital, promptsCaiNghien]);
+
   // Sync Class-list and styles mapping to DOM for seamless dynamic wallpapers mapping
   useEffect(() => {
     const root = document.documentElement;
@@ -1554,7 +1690,9 @@ export default function App() {
 
   const handleResetVotes = async () => {
     localStorage.removeItem("char_votes");
+    localStorage.removeItem(`weekly_votes_${currentWeek.weekId}`);
     setVotesData({});
+    setWeeklyVotesData({});
     try {
       const batch = writeBatch(db);
       const allPrompts = [...promptsHospital, ...promptsCaiNghien];
@@ -1562,11 +1700,13 @@ export default function App() {
         const docRef = doc(db, "votes", p.id.toString());
         batch.set(docRef, { count: 0 }, { merge: true });
       });
+      const weeklyDocRef = doc(db, "weekly_votes", currentWeek.weekId);
+      batch.set(weeklyDocRef, { votes: {}, weekId: currentWeek.weekId, weekLabel: currentWeek.weekLabel, updatedAt: new Date().toISOString() });
       await batch.commit();
     } catch (err) {
       console.error("Lỗi reset votes trên Firestore:", err);
     }
-    setToastMessage("🔄 Đã reset tất cả lượt vote về 0!");
+    setToastMessage("🔄 Đã reset tất cả lượt vote tuần và toàn thời gian về 0!");
   };
 
   // Portal Entrance Triggers
@@ -2244,10 +2384,15 @@ export default function App() {
   // Sort logic based on advanced filter
   filteredPrompts = filteredPrompts.sort((a, b) => {
     if (sortOrder === "priority") {
-      const votesA = votesData[a.id.toString()] || 0;
-      const votesB = votesData[b.id.toString()] || 0;
+      const votesA = weeklyVotesData[a.id.toString()] || 0;
+      const votesB = weeklyVotesData[b.id.toString()] || 0;
       if (votesB !== votesA) {
-        return votesB - votesA; // Highest priority (votes) first
+        return votesB - votesA; // Highest weekly votes first
+      }
+      const allTimeA = votesData[a.id.toString()] || 0;
+      const allTimeB = votesData[b.id.toString()] || 0;
+      if (allTimeB !== allTimeA) {
+        return allTimeB - allTimeA;
       }
     }
     
@@ -3066,7 +3211,11 @@ export default function App() {
                   {/* Top Favorited Leader Banner */}
                   <FavoriteLeaderBanner
                     prompts={activePrompts}
-                    votesData={votesData}
+                    weeklyVotesData={weeklyVotesData}
+                    allTimeVotesData={votesData}
+                    weekLabel={currentWeek.weekLabel}
+                    sundayEndDate={currentWeek.sunday}
+                    prevWeekChampion={prevWeekChampion}
                     onVote={handleVote}
                     currentUser={currentUser}
                     onOpenAuth={() => setShowUserAuthModal(true)}
@@ -3203,7 +3352,7 @@ export default function App() {
                             onUnlock={handleUnlockPrompt}
                             onLock={handleLockPrompt}
                             viewMode={viewMode}
-                            votes={votesData[p.id.toString()] || 0}
+                            votes={weeklyVotesData[p.id.toString()] || 0}
                             onVote={handleVote}
                           />
                         ))

@@ -95,6 +95,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Weekly Votes Collection
+    match /weekly_votes/{weekId} {
+      allow read, write: if true;
+    }
+
     // Quiz Questions Collection
     match /quiz_questions/{questionId} {
       allow read, write: if true;
